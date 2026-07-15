@@ -1,0 +1,18 @@
+[Unit]
+Description=Water tank level monitor (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=sensors
+Group=sensors
+WorkingDirectory=/home/sensors/water-level-monitoring
+EnvironmentFile=/home/sensors/water-level-monitoring/.env
+ExecStart=/home/sensors/water-level-monitoring/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
