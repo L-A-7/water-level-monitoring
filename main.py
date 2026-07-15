@@ -1,0 +1,186 @@
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
+
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+import calibration
+import db
+import projection
+from auth import require_admin
+from schemas import SENTINEL_NO_ECHO, AdminConfigIn, DeviceRequest
+
+DEFAULT_RANGE_DAYS = 60
+SUMMARY_LOOKBACK_DAYS = max(projection.TANK_PROJECTION_WINDOW_DAYS, projection.BATTERY_PROJECTION_WINDOW_DAYS)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+app.mount("/watertank/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+
+def _parse_iso(value: str) -> datetime:
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+@app.get("/watertank", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse(request, "index.html")
+
+
+@app.post("/watertank/api/readings")
+def post_readings(body: DeviceRequest):
+    received_at = datetime.now(timezone.utc)
+    n = len(body.readings)
+
+    with db.get_connection() as conn:
+        request_id = db.insert_request(
+            conn,
+            received_at=received_at.isoformat(),
+            rssi=body.rssi,
+            wakeup_period_min=body.config.wakeup_period_min,
+            avg_sample_count=body.config.avg_sample_count,
+        )
+
+        for seq, reading in enumerate(body.readings):
+            offset_min = (n - 1 - seq) * body.config.wakeup_period_min
+            reading_time = received_at - timedelta(minutes=offset_min)
+            distance_cm = None if reading.distance_cm == SENTINEL_NO_ECHO else reading.distance_cm
+
+            db.insert_reading(
+                conn,
+                request_id=request_id,
+                seq=seq,
+                reading_time=reading_time.isoformat(),
+                distance_cm=distance_cm,
+                battery_mv=reading.battery_mv,
+            )
+
+        desired_wakeup, desired_avg = db.get_desired_config(conn)
+
+    response = {}
+    if desired_wakeup is not None:
+        response["wakeup_period_min"] = desired_wakeup
+    if desired_avg is not None:
+        response["avg_sample_count"] = desired_avg
+    return response
+
+
+@app.get("/watertank/api/readings")
+def get_readings(start: str | None = None, end: str | None = None):
+    with db.get_connection() as conn:
+        data_start, data_end = db.get_data_bounds(conn)
+        if data_start is None or data_end is None:
+            return {"start": None, "end": None, "data_start": None, "data_end": None, "readings": []}
+
+        resolved_end = _parse_iso(end) if end else data_end
+        resolved_start = (
+            _parse_iso(start) if start else max(data_start, resolved_end - timedelta(days=DEFAULT_RANGE_DAYS))
+        )
+
+        rows = db.get_readings(conn, resolved_start.isoformat(), resolved_end.isoformat())
+
+    readings = []
+    for reading_time_str, distance_cm, battery_mv in rows:
+        reading_time = datetime.fromisoformat(reading_time_str)
+        level_cm, volume_liters = calibration.distance_to_level(distance_cm, reading_time)
+        readings.append(
+            {
+                "time": reading_time_str,
+                "distance_cm": distance_cm,
+                "level_cm": level_cm,
+                "volume_liters": volume_liters,
+                "battery_mv": battery_mv,
+            }
+        )
+
+    return {
+        "start": resolved_start.isoformat(),
+        "end": resolved_end.isoformat(),
+        "data_start": data_start.isoformat(),
+        "data_end": data_end.isoformat(),
+        "readings": readings,
+    }
+
+
+@app.get("/watertank/api/summary")
+def get_summary():
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(days=SUMMARY_LOOKBACK_DAYS)
+
+    with db.get_connection() as conn:
+        rows = db.get_readings(conn, window_start.isoformat(), now.isoformat())
+        latest = db.get_latest_reading(conn)
+
+    level_points = []
+    battery_points = []
+    for reading_time_str, distance_cm, battery_mv in rows:
+        t = datetime.fromisoformat(reading_time_str)
+        level_cm, _ = calibration.distance_to_level(distance_cm, t)
+        if level_cm is not None:
+            level_points.append((t, level_cm))
+        battery_points.append((t, battery_mv))
+
+    tank_empty_at = projection.estimate_tank_empty_date(level_points, now)
+    battery_critical_at = projection.estimate_battery_critical_date(battery_points, now)
+
+    last_reading_time = None
+    latest_level_cm = None
+    latest_volume_liters = None
+    latest_battery_mv = None
+    if latest:
+        latest_time_str, latest_distance_cm, latest_battery_mv = latest
+        last_reading_time = datetime.fromisoformat(latest_time_str)
+        latest_level_cm, latest_volume_liters = calibration.distance_to_level(latest_distance_cm, last_reading_time)
+
+    return {
+        "last_reading_time": last_reading_time.isoformat() if last_reading_time else None,
+        "level_cm": latest_level_cm,
+        "volume_m3": (latest_volume_liters / 1000) if latest_volume_liters is not None else None,
+        "battery_mv": latest_battery_mv,
+        "battery_v": (latest_battery_mv / 1000) if latest_battery_mv is not None else None,
+        "tank_empty_date": tank_empty_at.date().isoformat() if tank_empty_at else None,
+        "tank_empty_days": projection.days_until(tank_empty_at, now),
+        "battery_critical_date": battery_critical_at.date().isoformat() if battery_critical_at else None,
+        "battery_critical_days": projection.days_until(battery_critical_at, now),
+    }
+
+
+@app.get("/watertank/api/admin/config", dependencies=[Depends(require_admin)])
+def get_admin_config():
+    with db.get_connection() as conn:
+        desired_wakeup, desired_avg = db.get_desired_config(conn)
+        latest = db.get_latest_request(conn)
+
+    device_reported = None
+    if latest:
+        received_at, rssi, wakeup_period_min, avg_sample_count = latest
+        device_reported = {
+            "received_at": received_at,
+            "rssi": rssi,
+            "wakeup_period_min": wakeup_period_min,
+            "avg_sample_count": avg_sample_count,
+        }
+
+    return {
+        "desired": {"wakeup_period_min": desired_wakeup, "avg_sample_count": desired_avg},
+        "device_reported": device_reported,
+    }
+
+
+@app.put("/watertank/api/admin/config", dependencies=[Depends(require_admin)])
+def put_admin_config(body: AdminConfigIn):
+    with db.get_connection() as conn:
+        db.set_desired_config(conn, body.wakeup_period_min, body.avg_sample_count)
+    return {"desired": {"wakeup_period_min": body.wakeup_period_min, "avg_sample_count": body.avg_sample_count}}

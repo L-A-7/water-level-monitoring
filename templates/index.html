@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Water Tank Level</title>
+  <link rel="stylesheet" href="/watertank/static/css/style.css" />
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Water Tank Level</h1>
+      <p class="subtitle">Roof runoff cistern &mdash; level and volume are approximate until the tank surface area is measured.</p>
+    </header>
+
+    <p class="last-reading" id="last-reading">Last reading: &mdash;</p>
+
+    <section class="metric-section">
+      <div class="indicator-card tone-blue">
+        <div class="indicator-row">
+          <div class="indicator-item">
+            <div class="indicator-label">Water level</div>
+            <div class="indicator-value" id="stat-level">&mdash;</div>
+          </div>
+          <div class="indicator-sep"></div>
+          <div class="indicator-item">
+            <div class="indicator-label">Water volume</div>
+            <div class="indicator-value" id="stat-volume">&mdash;</div>
+          </div>
+          <div class="indicator-sep"></div>
+          <div class="indicator-item">
+            <div class="indicator-label">Estimated empty date</div>
+            <div class="indicator-value" id="stat-empty-date">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row" data-chart="level">
+        <button type="button" data-range="7">7d</button>
+        <button type="button" data-range="30">30d</button>
+        <button type="button" data-range="60">60d</button>
+        <button type="button" data-range="all">All</button>
+        <div class="spacer"></div>
+        <button type="button" class="table-toggle" data-toggle="level">View as table</button>
+      </div>
+
+      <div class="chart-card" id="level-chart-card">
+        <div class="chart-canvas-wrap">
+          <canvas id="level-chart"></canvas>
+        </div>
+      </div>
+      <div class="empty-state" id="empty-state" style="display: none;">No readings yet.</div>
+
+      <div class="table-wrap" id="level-table-wrap" style="display: none;">
+        <div class="chart-card table-scroll">
+          <table class="readings-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Level (cm)</th>
+                <th>Volume (L)</th>
+              </tr>
+            </thead>
+            <tbody id="level-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-section">
+      <div class="indicator-card tone-red">
+        <div class="indicator-row">
+          <div class="indicator-item">
+            <div class="indicator-label">Battery voltage</div>
+            <div class="indicator-value" id="stat-battery">&mdash;</div>
+          </div>
+          <div class="indicator-sep"></div>
+          <div class="indicator-item">
+            <div class="indicator-label">Days until charging</div>
+            <div class="indicator-value" id="stat-battery-days">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row" data-chart="battery">
+        <button type="button" data-range="7">7d</button>
+        <button type="button" data-range="30">30d</button>
+        <button type="button" data-range="60">60d</button>
+        <button type="button" data-range="all">All</button>
+        <div class="spacer"></div>
+        <button type="button" class="table-toggle" data-toggle="battery">View as table</button>
+      </div>
+
+      <div class="chart-card" id="battery-chart-card">
+        <div class="chart-canvas-wrap secondary">
+          <canvas id="battery-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="table-wrap" id="battery-table-wrap" style="display: none;">
+        <div class="chart-card table-scroll">
+          <table class="readings-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Battery (V)</th>
+              </tr>
+            </thead>
+            <tbody id="battery-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Read-only public view. Data from a single HC-SR04 sensor, sampled roughly every 15 minutes.
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="/watertank/static/js/dashboard.js"></script>
+</body>
+</html>
