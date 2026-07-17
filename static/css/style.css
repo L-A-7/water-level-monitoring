@@ -232,3 +232,81 @@ footer {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.admin-config-card {
+  padding: 20px;
+}
+
+.device-reported {
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.device-reported .indicator-label {
+  margin-bottom: 2px;
+}
+
+.config-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-field label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.config-field input {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 10px;
+  width: 140px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+}
+
+.config-form button {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--series-1);
+  background: var(--series-1);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.config-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.config-status.success {
+  color: var(--series-1);
+}
+
+.config-status.error {
+  color: var(--series-2);
+}
+
+.config-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}

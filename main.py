@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 import calibration
 import db
 import projection
-from auth import require_admin
+from auth import require_admin, require_device_token
 from schemas import SENTINEL_NO_ECHO, AdminConfigIn, DeviceRequest
 
 DEFAULT_RANGE_DAYS = 60
@@ -39,8 +39,13 @@ def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
 
-@app.post("/watertank/api/readings")
-def post_readings(body: DeviceRequest):
+@app.get("/watertank/admin", response_class=HTMLResponse, dependencies=[Depends(require_admin)])
+def admin(request: Request):
+    return templates.TemplateResponse(request, "admin.html")
+
+
+@app.post("/watertank/api/readings/{token}", dependencies=[Depends(require_device_token)])
+def post_readings(token: str, body: DeviceRequest):
     received_at = datetime.now(timezone.utc)
     n = len(body.readings)
 
