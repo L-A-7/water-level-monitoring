@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Settings &mdash; Water Tank Level</title>
+  <link rel="stylesheet" href="/watertank/static/css/style.css" />
+</head>
+<body>
+  <div class="page settings-page">
+    <header class="settings-header">
+      <a class="back-link" href="/watertank/admin">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Dashboard
+      </a>
+      <div class="settings-header-title">Admin Settings</div>
+      <div class="header-spacer"></div>
+    </header>
+
+    <form id="config-form" class="settings-body">
+      <h2 class="settings-title">Configuration</h2>
+      <p class="settings-subtitle">
+        Adjust raw sensor calibration and system hardware settings. These changes affect sensor
+        measurement logic and reporting frequency.
+      </p>
+
+      <section class="settings-card">
+        <div class="settings-card-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
+          Sensor Calibration
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-field-row">
+            <label for="reference-offset">Reference Water Level</label>
+            <span class="settings-formula">(h_level = ref_offset &minus; d_sensor)</span>
+          </div>
+          <div class="settings-input-wrap">
+            <input type="number" step="0.1" id="reference-offset" required />
+            <span class="settings-input-unit">cm</span>
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <div class="settings-field-row">
+            <label for="temp-offset">Reference Temperature</label>
+            <span class="settings-formula">(T = T_chip + offset)</span>
+          </div>
+          <div class="settings-input-wrap">
+            <input type="number" step="0.1" id="temp-offset" required />
+            <span class="settings-input-unit">&deg;C</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="settings-card-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="4" x2="5" y2="20"/><line x1="10" y1="8" x2="10" y2="20"/><line x1="15" y1="2" x2="15" y2="20"/><line x1="20" y1="10" x2="20" y2="20"/></svg>
+          Hardware Configuration
+        </div>
+
+        <div class="settings-field">
+          <label for="wakeup-period">Wake-up Period (Interval)</label>
+          <div class="settings-input-wrap">
+            <input type="number" min="1" max="1440" id="wakeup-period" placeholder="auto" />
+            <span class="settings-input-unit">min</span>
+          </div>
+          <p class="settings-hint">Device reporting frequency (1 min to 1440 min). Blank clears the override.</p>
+        </div>
+
+        <div class="settings-field">
+          <label for="avg-sample-count">Averaging Samples</label>
+          <div class="settings-input-wrap">
+            <input type="number" min="1" max="100" id="avg-sample-count" placeholder="auto" />
+            <span class="settings-input-unit">samples</span>
+          </div>
+          <p class="settings-hint">Blank clears the override and lets the device keep its own current setting.</p>
+        </div>
+      </section>
+
+      <section class="settings-card device-reported-card">
+        <div class="indicator-label">Device last reported</div>
+        <div id="device-reported-body">&mdash;</div>
+      </section>
+
+      <section class="settings-card">
+        <div class="settings-card-title tone-red">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+          Alert Thresholds
+        </div>
+
+        <div class="alert-field">
+          <div class="alert-field-row">
+            <span class="alert-icon tone-blue">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11Z"/></svg>
+            </span>
+            <div class="alert-field-text">
+              <label for="low-level-threshold">Low Level Alert</label>
+              <p>Trigger email when level drops below</p>
+            </div>
+            <span class="alert-field-value tone-blue"><output id="low-level-value">20</output> cm</span>
+          </div>
+          <input type="range" id="low-level-threshold" class="slider-blue" min="0" max="100" step="1" />
+          <div class="alert-range-labels"><span>0cm (Empty)</span><span>100cm</span></div>
+        </div>
+
+        <div class="alert-field">
+          <div class="alert-field-row">
+            <span class="alert-icon tone-green">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="10" y1="6" x2="14" y2="6"/></svg>
+            </span>
+            <div class="alert-field-text">
+              <label for="low-battery-threshold">Low Battery Alert</label>
+              <p>Trigger email when voltage drops below</p>
+            </div>
+            <span class="alert-field-value tone-green"><output id="low-battery-value">3.3</output> V</span>
+          </div>
+          <input type="range" id="low-battery-threshold" class="slider-green" min="2.8" max="4.2" step="0.1" />
+          <div class="alert-range-labels"><span>2.8V</span><span>4.2V</span></div>
+        </div>
+
+        <div class="alert-field">
+          <div class="alert-field-row">
+            <span class="alert-icon tone-violet">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10a12 12 0 0 1 16 0"/><path d="M7 13a8 8 0 0 1 10 0"/><path d="M10 16a4 4 0 0 1 4 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
+            </span>
+            <div class="alert-field-text">
+              <label for="weak-signal-threshold">Weak Signal Warning</label>
+              <p>Mark UI warning when RSSI is weaker than <em>(UI only, not emailed)</em></p>
+            </div>
+            <span class="alert-field-value tone-violet"><output id="weak-signal-value">-85</output> dBm</span>
+          </div>
+          <input type="range" id="weak-signal-threshold" class="slider-violet" min="-100" max="-30" step="1" />
+          <div class="alert-range-labels"><span>-100 dBm</span><span>-30 dBm</span></div>
+        </div>
+
+        <div class="alert-field">
+          <div class="alert-field-row">
+            <span class="alert-icon tone-danger">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>
+            </span>
+            <div class="alert-field-text">
+              <label for="submersed-threshold">Submersed Sensor Alert (Safety)</label>
+              <p>Trigger email if sensor-to-water distance is less than this (sensor is not waterproof)</p>
+            </div>
+            <span class="alert-field-value tone-danger"><output id="submersed-value">20</output> cm</span>
+          </div>
+          <input type="range" id="submersed-threshold" class="slider-danger" min="0" max="100" step="1" />
+          <div class="alert-range-labels"><span>0cm</span><span>100cm</span></div>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="settings-card-title">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 6 8 6 8-6"/></svg>
+          Email Notifications
+        </div>
+
+        <div class="settings-field">
+          <label for="recipient-email">Recipient Email Address</label>
+          <div class="settings-input-wrap">
+            <input type="email" id="recipient-email" placeholder="e.g. admin@example.com" />
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label>Alert Subscriptions</label>
+          <label class="check-row">
+            <input type="checkbox" id="sub-low-level" />
+            <span class="check-mark"></span>
+            Critical Low Level
+          </label>
+          <label class="check-row">
+            <input type="checkbox" id="sub-low-battery" />
+            <span class="check-mark"></span>
+            Low Battery
+          </label>
+          <div class="check-row check-row-disabled">
+            <span class="check-mark check-mark-disabled"></span>
+            Weak Signal
+          </div>
+          <label class="check-row">
+            <input type="checkbox" id="sub-submersion-risk" />
+            <span class="check-mark"></span>
+            Sensor Submersion Risk
+          </label>
+        </div>
+      </section>
+    </form>
+
+    <div class="settings-savebar">
+      <span class="config-status" id="config-status"></span>
+      <a class="btn-cancel" href="/watertank/admin">Cancel</a>
+      <button class="btn-save" type="submit" form="config-form">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5Z"/><path d="M8 4v5h8V4"/><path d="M8 20v-6h8v6"/></svg>
+        Save Changes
+      </button>
+    </div>
+  </div>
+
+  <script src="/watertank/static/js/admin.js"></script>
+</body>
+</html>

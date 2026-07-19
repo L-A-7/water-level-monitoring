@@ -1,17 +1,22 @@
 const RANGE_PRESETS = [
+  { key: "24h", label: "24h", days: 1 },
   { key: "7", label: "7d", days: 7 },
   { key: "30", label: "30d", days: 30 },
   { key: "60", label: "60d", days: 60 },
   { key: "all", label: "All", days: null },
 ];
 const DEFAULT_RANGE = "60";
+const RANGE_COOKIE = "tank_range";
 
 const TANK_ENHANCED_DAYS = 60;
-const BATTERY_ENHANCED_DAYS = 7;
+const TEMP_OK_MIN_C = 0;
+const TEMP_OK_MAX_C = 45;
 
-const sections = {
-  level: { cookie: "tank_range_level", tableVisible: false, chart: null },
-  battery: { cookie: "tank_range_battery", tableVisible: false, chart: null },
+const state = {
+  levelChart: null,
+  batteryChart: null,
+  levelTableVisible: false,
+  batteryTableVisible: false,
 };
 
 function getCookie(name) {
@@ -26,7 +31,7 @@ function setCookie(name, value) {
 function rangeStartIso(days) {
   if (days === null) return null;
   const d = new Date();
-  d.setDate(d.getDate() - days);
+  d.setTime(d.getTime() - days * 24 * 60 * 60 * 1000);
   return d.toISOString();
 }
 
@@ -75,7 +80,7 @@ const crosshairPlugin = {
   },
 };
 
-function baseChartOptions(yTitle) {
+function dualAxisOptions(leftLabel, rightLabel) {
   const gridline = cssVar("--gridline");
   const muted = cssVar("--text-muted");
   const axis = cssVar("--axis");
@@ -96,18 +101,29 @@ function baseChartOptions(yTitle) {
         borderColor: gridline,
         borderWidth: 1,
         padding: 10,
+        usePointStyle: true,
       },
     },
     scales: {
       x: {
         type: "time",
         grid: { color: gridline, drawTicks: false },
-        ticks: { color: muted, maxRotation: 0 },
+        ticks: { color: muted, maxRotation: 0, autoSkipPadding: 16 },
         border: { color: axis },
       },
-      y: {
-        title: { display: true, text: yTitle, color: muted, font: { size: 12 } },
+      yLeft: {
+        type: "linear",
+        position: "left",
+        title: { display: true, text: leftLabel, color: muted, font: { size: 12 } },
         grid: { color: gridline, drawTicks: false },
+        ticks: { color: muted },
+        border: { color: axis },
+      },
+      yRight: {
+        type: "linear",
+        position: "right",
+        title: { display: true, text: rightLabel, color: muted, font: { size: 12 } },
+        grid: { display: false },
         ticks: { color: muted },
         border: { color: axis },
       },
@@ -120,58 +136,67 @@ function renderLevelChart(readings) {
   const emptyState = document.getElementById("empty-state");
   const chartCard = document.getElementById("level-chart-card");
 
-  const points = readings
-    .filter((r) => r.level_cm !== null)
-    .map((r) => ({ x: r.time, y: r.level_cm, volume: r.volume_liters, battery: r.battery_mv }));
+  const levelPoints = readings.filter((r) => r.level_cm !== null).map((r) => ({ x: r.time, y: r.level_cm }));
+  const tempPoints = readings.filter((r) => r.chip_temp_c !== null).map((r) => ({ x: r.time, y: r.chip_temp_c }));
 
-  if (!points.length) {
+  if (!levelPoints.length && !tempPoints.length) {
     chartCard.style.display = "none";
     emptyState.style.display = "block";
     return;
   }
-  chartCard.style.display = sections.level.tableVisible ? "none" : "block";
+  chartCard.style.display = state.levelTableVisible ? "none" : "block";
   emptyState.style.display = "none";
 
-  const seriesColor = cssVar("--series-1");
-  const wash = cssVar("--series-1-wash");
+  const levelColor = cssVar("--series-1");
+  const levelWash = cssVar("--series-1-wash");
+  const tempColor = cssVar("--series-2");
   const surface = cssVar("--surface");
 
-  if (sections.level.chart) {
-    sections.level.chart.destroy();
+  if (state.levelChart) {
+    state.levelChart.destroy();
   }
 
-  const options = baseChartOptions("Level (cm)");
+  const options = dualAxisOptions("Level (cm)", "Temp (°C)");
   options.plugins.tooltip.callbacks = {
     title(items) {
       return fmtTime(items[0].raw.x);
     },
     label(item) {
-      const raw = item.raw;
-      const lines = [`Level: ${fmtNumber(raw.y, 1)} cm`];
-      if (raw.volume !== null && raw.volume !== undefined) {
-        lines.push(`Volume: ~${fmtNumber(raw.volume)} L`);
-      }
-      if (raw.battery !== null && raw.battery !== undefined) {
-        lines.push(`Battery: ${fmtNumber(raw.battery / 1000, 2)} V`);
-      }
-      return lines;
+      if (item.dataset.yAxisID === "yLeft") return `Level: ${fmtNumber(item.raw.y, 1)} cm`;
+      return `Temp: ${fmtNumber(item.raw.y, 1)} °C`;
     },
   };
 
-  sections.level.chart = new Chart(canvas.getContext("2d"), {
+  state.levelChart = new Chart(canvas.getContext("2d"), {
     type: "line",
     data: {
       datasets: [
         {
           label: "Water level",
-          data: points,
-          borderColor: seriesColor,
-          backgroundColor: wash,
+          yAxisID: "yLeft",
+          data: levelPoints,
+          borderColor: levelColor,
+          backgroundColor: levelWash,
           borderWidth: 2,
           fill: true,
           pointRadius: 0,
           pointHoverRadius: 4,
-          pointHoverBackgroundColor: seriesColor,
+          pointHoverBackgroundColor: levelColor,
+          pointHoverBorderColor: surface,
+          pointHoverBorderWidth: 2,
+          tension: 0.15,
+        },
+        {
+          label: "Chip temperature",
+          yAxisID: "yRight",
+          data: tempPoints,
+          borderColor: tempColor,
+          backgroundColor: "transparent",
+          borderWidth: 2,
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: tempColor,
           pointHoverBorderColor: surface,
           pointHoverBorderWidth: 2,
           tension: 0.15,
@@ -187,49 +212,69 @@ function renderBatteryChart(readings) {
   const canvas = document.getElementById("battery-chart");
   const chartCard = document.getElementById("battery-chart-card");
 
-  const points = readings.map((r) => ({ x: r.time, y: r.battery_mv / 1000 }));
+  const batteryPoints = readings.map((r) => ({ x: r.time, y: r.battery_mv / 1000 }));
+  const rssiPoints = readings.filter((r) => r.rssi !== null).map((r) => ({ x: r.time, y: r.rssi }));
 
-  if (!points.length) {
+  if (!batteryPoints.length) {
     chartCard.style.display = "none";
     return;
   }
-  chartCard.style.display = sections.battery.tableVisible ? "none" : "block";
+  chartCard.style.display = state.batteryTableVisible ? "none" : "block";
 
-  const seriesColor = cssVar("--series-2");
-  const wash = cssVar("--series-2-wash");
+  const batteryColor = cssVar("--series-3");
+  const rssiColor = cssVar("--series-4");
   const surface = cssVar("--surface");
 
-  if (sections.battery.chart) {
-    sections.battery.chart.destroy();
+  if (state.batteryChart) {
+    state.batteryChart.destroy();
   }
 
-  const options = baseChartOptions("Battery (V)");
+  const options = dualAxisOptions("Battery (V)", "RSSI (dBm)");
   options.plugins.tooltip.callbacks = {
     title(items) {
       return fmtTime(items[0].raw.x);
     },
     label(item) {
-      return `Battery: ${fmtNumber(item.raw.y, 2)} V`;
+      if (item.dataset.yAxisID === "yLeft") return `Battery: ${fmtNumber(item.raw.y, 2)} V`;
+      return `RSSI: ${fmtNumber(item.raw.y, 0)} dBm`;
     },
   };
 
-  sections.battery.chart = new Chart(canvas.getContext("2d"), {
+  state.batteryChart = new Chart(canvas.getContext("2d"), {
     type: "line",
     data: {
       datasets: [
         {
           label: "Battery voltage",
-          data: points,
-          borderColor: seriesColor,
-          backgroundColor: wash,
+          yAxisID: "yLeft",
+          data: batteryPoints,
+          borderColor: batteryColor,
+          backgroundColor: "transparent",
           borderWidth: 2,
-          fill: true,
+          fill: false,
           pointRadius: 0,
           pointHoverRadius: 4,
-          pointHoverBackgroundColor: seriesColor,
+          pointHoverBackgroundColor: batteryColor,
           pointHoverBorderColor: surface,
           pointHoverBorderWidth: 2,
-          tension: 0.15,
+          tension: 0.2,
+        },
+        {
+          label: "Signal strength (RSSI)",
+          yAxisID: "yRight",
+          data: rssiPoints,
+          borderColor: rssiColor,
+          backgroundColor: "transparent",
+          borderWidth: 2,
+          borderDash: [4, 4],
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: rssiColor,
+          pointHoverBorderColor: surface,
+          pointHoverBorderWidth: 2,
+          tension: 0.25,
+          spanGaps: true,
         },
       ],
     },
@@ -243,30 +288,37 @@ function renderSummary(data) {
     ? `Last reading: ${fmtTime(data.last_reading_time)}`
     : "Last reading: —";
 
-  document.getElementById("stat-level").textContent =
-    data.level_cm !== null ? `${fmtNumber(data.level_cm, 1)} cm` : "—";
-  document.getElementById("stat-volume").textContent =
-    data.volume_m3 !== null ? `~${fmtNumber(data.volume_m3, 2)} m³` : "—";
-  document.getElementById("stat-battery").textContent =
-    data.battery_v !== null ? `${fmtNumber(data.battery_v, 2)} V` : "—";
+  document.getElementById("stat-level").textContent = data.level_cm !== null ? fmtNumber(data.level_cm, 1) : "—";
+  document.getElementById("stat-distance").textContent =
+    data.level_cm !== null ? `sensor to water-surface ≈ ${fmtNumber(data.level_cm, 1)} cm` : "sensor to water-surface = —";
 
   const emptyDateEl = document.getElementById("stat-empty-date");
   if (data.tank_empty_date) {
-    emptyDateEl.textContent = fmtDateOnly(data.tank_empty_date);
+    emptyDateEl.textContent = `Estimated empty date: ${fmtDateOnly(data.tank_empty_date)}`;
     emptyDateEl.classList.toggle("enhanced", data.tank_empty_days !== null && data.tank_empty_days <= TANK_ENHANCED_DAYS);
   } else {
-    emptyDateEl.textContent = "—";
+    emptyDateEl.textContent = "Estimated empty date: —";
     emptyDateEl.classList.remove("enhanced");
   }
 
-  const batteryDaysEl = document.getElementById("stat-battery-days");
-  if (data.battery_critical_days !== null && data.battery_critical_days !== undefined) {
-    batteryDaysEl.textContent = `${fmtNumber(data.battery_critical_days)} days`;
-    batteryDaysEl.classList.toggle("enhanced", data.battery_critical_days <= BATTERY_ENHANCED_DAYS);
+  document.getElementById("stat-temp").textContent = data.chip_temp_c !== null ? fmtNumber(data.chip_temp_c, 1) : "—";
+  const tempStatusEl = document.getElementById("stat-temp-status");
+  tempStatusEl.classList.remove("status-good", "status-warning");
+  if (data.chip_temp_c !== null && data.chip_temp_c !== undefined) {
+    const inRange = data.chip_temp_c >= TEMP_OK_MIN_C && data.chip_temp_c <= TEMP_OK_MAX_C;
+    tempStatusEl.textContent = inRange ? "Optimal operating range" : "Outside optimal range";
+    tempStatusEl.classList.add(inRange ? "status-good" : "status-warning");
   } else {
-    batteryDaysEl.textContent = "—";
-    batteryDaysEl.classList.remove("enhanced");
+    tempStatusEl.textContent = "—";
   }
+
+  document.getElementById("stat-battery").textContent = data.battery_v !== null ? `${fmtNumber(data.battery_v, 2)} V` : "—";
+  document.getElementById("stat-battery-recharge").textContent = data.battery_critical_date
+    ? `Est. recharge by: ${fmtDateOnly(data.battery_critical_date)}`
+    : "Est. recharge: —";
+  const rssiEl = document.getElementById("stat-rssi");
+  rssiEl.textContent = data.rssi !== null && data.rssi !== undefined ? `${fmtNumber(data.rssi)} dBm` : "—";
+  rssiEl.classList.toggle("status-warning", Boolean(data.weak_signal_warning));
 }
 
 function renderLevelTable(readings) {
@@ -277,6 +329,7 @@ function renderLevelTable(readings) {
     const cells = [
       fmtTime(r.time),
       r.level_cm !== null ? fmtNumber(r.level_cm, 1) : "no echo",
+      r.chip_temp_c !== null ? fmtNumber(r.chip_temp_c, 1) : "—",
       r.volume_liters !== null ? fmtNumber(r.volume_liters) : "—",
     ];
     for (const value of cells) {
@@ -293,7 +346,7 @@ function renderBatteryTable(readings) {
   tbody.innerHTML = "";
   for (const r of [...readings].reverse()) {
     const tr = document.createElement("tr");
-    const cells = [fmtTime(r.time), fmtNumber(r.battery_mv / 1000, 2)];
+    const cells = [fmtTime(r.time), fmtNumber(r.battery_mv / 1000, 2), r.rssi !== null ? fmtNumber(r.rssi) : "—"];
     for (const value of cells) {
       const td = document.createElement("td");
       td.textContent = value;
@@ -303,13 +356,13 @@ function renderBatteryTable(readings) {
   }
 }
 
-async function loadSectionRange(key, presetKey) {
+async function loadRange(presetKey) {
   const preset = RANGE_PRESETS.find((p) => p.key === presetKey) || RANGE_PRESETS.find((p) => p.key === DEFAULT_RANGE);
 
-  document.querySelectorAll(`.filter-row[data-chart="${key}"] button[data-range]`).forEach((btn) => {
+  document.querySelectorAll("#range-pills button[data-range]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.range === preset.key);
   });
-  setCookie(sections[key].cookie, preset.key);
+  setCookie(RANGE_COOKIE, preset.key);
 
   const params = new URLSearchParams();
   const start = rangeStartIso(preset.days);
@@ -318,13 +371,10 @@ async function loadSectionRange(key, presetKey) {
   const res = await fetch(`/watertank/api/readings?${params.toString()}`);
   const data = await res.json();
 
-  if (key === "level") {
-    renderLevelChart(data.readings);
-    renderLevelTable(data.readings);
-  } else {
-    renderBatteryChart(data.readings);
-    renderBatteryTable(data.readings);
-  }
+  renderLevelChart(data.readings);
+  renderLevelTable(data.readings);
+  renderBatteryChart(data.readings);
+  renderBatteryTable(data.readings);
 }
 
 async function loadSummary() {
@@ -333,9 +383,9 @@ async function loadSummary() {
   renderSummary(data);
 }
 
-function initRangeButtons(key) {
-  document.querySelectorAll(`.filter-row[data-chart="${key}"] button[data-range]`).forEach((btn) => {
-    btn.addEventListener("click", () => loadSectionRange(key, btn.dataset.range));
+function initRangePills() {
+  document.querySelectorAll("#range-pills button[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => loadRange(btn.dataset.range));
   });
 }
 
@@ -343,20 +393,20 @@ function initTableToggle(key) {
   const toggle = document.querySelector(`.table-toggle[data-toggle="${key}"]`);
   const tableWrap = document.getElementById(`${key}-table-wrap`);
   const chartCard = document.getElementById(`${key}-chart-card`);
+  const visibleKey = key === "level" ? "levelTableVisible" : "batteryTableVisible";
   toggle.addEventListener("click", () => {
-    sections[key].tableVisible = !sections[key].tableVisible;
-    tableWrap.style.display = sections[key].tableVisible ? "block" : "none";
-    chartCard.style.display = sections[key].tableVisible ? "none" : "block";
-    toggle.textContent = sections[key].tableVisible ? "View as chart" : "View as table";
+    state[visibleKey] = !state[visibleKey];
+    tableWrap.style.display = state[visibleKey] ? "block" : "none";
+    chartCard.style.display = state[visibleKey] ? "none" : "block";
+    toggle.textContent = state[visibleKey] ? "View as chart" : "View as table";
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  for (const key of Object.keys(sections)) {
-    initRangeButtons(key);
-    initTableToggle(key);
-    const savedRange = getCookie(sections[key].cookie) || DEFAULT_RANGE;
-    loadSectionRange(key, savedRange);
-  }
+  initRangePills();
+  initTableToggle("level");
+  initTableToggle("battery");
+  const savedRange = getCookie(RANGE_COOKIE) || DEFAULT_RANGE;
+  loadRange(savedRange);
   loadSummary();
 });

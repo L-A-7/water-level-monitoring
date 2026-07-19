@@ -37,9 +37,9 @@ not firmware source (the firmware lives in a separate repo).
   },
   "rssi": -66,
   "readings": [
-    {"distance_cm": 50.50, "battery_mv": 4200},
-    {"distance_cm": 50.60, "battery_mv": 4195},
-    {"distance_cm": 50.47, "battery_mv": 4223}
+    {"distance_cm": 50.50, "battery_mv": 4200, "chip_temp_c": 24.1},
+    {"distance_cm": 50.60, "battery_mv": 4195, "chip_temp_c": 24.3},
+    {"distance_cm": 50.47, "battery_mv": 4223, "chip_temp_c": 24.2}
   ]
 }
 ```
@@ -52,6 +52,7 @@ not firmware source (the firmware lives in a separate repo).
 | `readings` | array | Oldest first, **current reading is always last**. Array has 1 entry in the normal case; more than 1 when flushing a backlog after a WiFi outage (queue holds up to 192 entries / 48h at 15-min sampling, ring-buffer overwrite-oldest if exceeded). |
 | `readings[].distance_cm` | float, 2 decimals | Raw sensor distance. **Sentinel value `-1.00` means the HC-SR04 got no valid echo that wake** — filter/flag these, don't treat as a literal reading. |
 | `readings[].battery_mv` | int | Battery voltage in mV (~3000-4200 for the single-cell LiPo in use). |
+| `readings[].chip_temp_c` | float, 1 decimal, **planned, not yet implemented** | ESP32C6 internal chip temperature reading. Server accepts this field as optional (`null`/absent on current firmware, which doesn't send it yet) so the server and firmware repos can deploy independently; once firmware adds it, this becomes populated going forward without a server-side change. Raw chip value — display calibration (offset) is applied server-side, not on-device. |
 
 ### Timestamp reconstruction
 
