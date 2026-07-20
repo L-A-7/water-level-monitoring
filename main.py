@@ -174,6 +174,7 @@ def get_summary():
     latest_volume_liters = None
     latest_battery_mv = None
     latest_temp_c = None
+    latest_distance_cm = None
     if latest:
         latest_time_str, latest_distance_cm, latest_battery_mv, latest_chip_temp_c = latest
         last_reading_time = datetime.fromisoformat(latest_time_str)
@@ -185,6 +186,7 @@ def get_summary():
     return {
         "last_reading_time": last_reading_time.isoformat() if last_reading_time else None,
         "level_cm": latest_level_cm,
+        "distance_cm": latest_distance_cm,
         "volume_m3": (latest_volume_liters / 1000) if latest_volume_liters is not None else None,
         "battery_mv": latest_battery_mv,
         "battery_v": (latest_battery_mv / 1000) if latest_battery_mv is not None else None,

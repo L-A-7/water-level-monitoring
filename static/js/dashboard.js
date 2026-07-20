@@ -290,7 +290,9 @@ function renderSummary(data) {
 
   document.getElementById("stat-level").textContent = data.level_cm !== null ? fmtNumber(data.level_cm, 1) : "—";
   document.getElementById("stat-distance").textContent =
-    data.level_cm !== null ? `sensor to water-surface ≈ ${fmtNumber(data.level_cm, 1)} cm` : "sensor to water-surface = —";
+    data.distance_cm !== null && data.distance_cm !== undefined
+      ? `sensor to water-surface ≈ ${fmtNumber(data.distance_cm, 1)} cm`
+      : "sensor to water-surface = —";
 
   const emptyDateEl = document.getElementById("stat-empty-date");
   if (data.tank_empty_date) {
