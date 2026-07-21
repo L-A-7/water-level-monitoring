@@ -7,7 +7,15 @@
     <div class="header-actions">
       {% if admin %}
       <a class="settings-link" href="/watertank/admin/settings">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="16" cy="14" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="19" x2="20" y2="19"/><circle cx="11" cy="19" r="2" fill="currentColor" stroke="none"/></svg>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round">
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <circle cx="9" cy="7" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="14" x2="20" y2="14" />
+          <circle cx="16" cy="14" r="2" fill="currentColor" stroke="none" />
+          <line x1="4" y1="19" x2="20" y2="19" />
+          <circle cx="11" cy="19" r="2" fill="currentColor" stroke="none" />
+        </svg>
         Settings
       </a>
       {% endif %}
@@ -23,101 +31,110 @@
 
   <p class="last-reading" id="last-reading">Last reading: &mdash;</p>
 
-  <section class="stat-card">
-    <div class="stat-block">
-      <div class="stat-icon tone-blue">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0"/><path d="M3 10c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" opacity="0.5"/></svg>
+  <section class="chart-section chart-section-main">
+    <div class="chart-header-stat">
+      <div class="stat-block">
+        <div class="stat-icon tone-blue">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 15c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" />
+            <path d="M3 10c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" opacity="0.5" />
+          </svg>
+        </div>
+        <div class="stat-body">
+          <div class="stat-label">Current level</div>
+          <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
+          <div class="stat-sub" id="stat-distance">sensor to water = &mdash;</div>
+          <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
+        </div>
       </div>
-      <div class="stat-body">
-        <div class="stat-label">Current level</div>
-        <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
-        <div class="stat-sub" id="stat-distance">sensor to water-surface = &mdash;</div>
-        <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
-      </div>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat-block">
-      <div class="stat-icon tone-red">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V5a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0Z"/></svg>
-      </div>
-      <div class="stat-body">
-        <div class="stat-label">Chip temperature</div>
-        <div class="stat-value"><span id="stat-temp">&mdash;</span><span class="stat-unit">&deg;C</span></div>
-        <div class="stat-sub status-line" id="stat-temp-status">&mdash;</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="chart-section">
-    <div class="chart-header">
-      <div class="chart-title">Water level &amp; temp history</div>
-      <div class="chart-legend">
-        <span class="legend-item"><i class="legend-dot" style="background:var(--series-1)"></i>Level</span>
-        <span class="legend-item"><i class="legend-dot" style="background:var(--series-2)"></i>Temp</span>
-        <button type="button" class="table-toggle" data-toggle="level">View as table</button>
-      </div>
+      <button type="button" class="table-toggle" data-toggle="all">View as table</button>
     </div>
     <div class="chart-card" id="level-chart-card">
-      <div class="chart-canvas-wrap"><canvas id="level-chart"></canvas></div>
-    </div>
-    <div class="empty-state" id="empty-state" style="display: none;">No readings yet.</div>
-    <div class="table-wrap" id="level-table-wrap" style="display: none;">
-      <div class="chart-card table-scroll">
-        <table class="readings-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Level (cm)</th>
-              <th>Temp (&deg;C)</th>
-              <th>Volume (L)</th>
-            </tr>
-          </thead>
-          <tbody id="level-table-body"></tbody>
-        </table>
-      </div>
+      <div class="axis-unit">cm</div>
+      <div class="chart-canvas-wrap" id="level-chart"></div>
+      <div class="empty-state" id="level-empty-state" style="display: none;">No readings yet.</div>
     </div>
   </section>
 
-  <section class="chart-section">
-    <div class="mini-stat-row">
+  <section class="chart-section chart-section-sub">
+    <div class="chart-header-mini">
       <div class="mini-stat">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M19 10h2v4h-2"/></svg>
+        <svg class="mini-stat-icon tone-red" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 14.5V5a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0Z" />
+        </svg>
+        <span class="mini-stat-label">MCU temperature</span>
+        <span class="mini-stat-value" id="stat-temp">&mdash;</span>
+        <span class="mini-stat-unit">&deg;C</span>
+        <span class="mini-stat-sub status-line" id="stat-temp-status">&mdash;</span>
+      </div>
+    </div>
+    <div class="chart-card" id="temp-chart-card">
+      <div class="axis-unit">&deg;C</div>
+      <div class="chart-canvas-wrap secondary" id="temp-chart"></div>
+      <div class="empty-state" id="temp-empty-state" style="display: none;">No readings yet.</div>
+    </div>
+  </section>
+
+  <section class="chart-section chart-section-sub">
+    <div class="chart-header-mini">
+      <div class="mini-stat">
+        <svg class="mini-stat-icon tone-green" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="7" width="16" height="10" rx="2" />
+          <path d="M19 10h2v4h-2" />
+        </svg>
         <span class="mini-stat-label">Battery</span>
         <span class="mini-stat-value" id="stat-battery">&mdash;</span>
         <span class="mini-stat-sub" id="stat-battery-recharge">Est. recharge: &mdash;</span>
       </div>
+    </div>
+    <div class="chart-card" id="voltage-chart-card">
+      <div class="axis-unit">V</div>
+      <div class="chart-canvas-wrap secondary" id="voltage-chart"></div>
+      <div class="empty-state" id="voltage-empty-state" style="display: none;">No readings yet.</div>
+    </div>
+  </section>
+
+  <section class="chart-section chart-section-sub">
+    <div class="chart-header-mini">
       <div class="mini-stat">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10a12 12 0 0 1 16 0"/><path d="M7 13a8 8 0 0 1 10 0"/><path d="M10 16a4 4 0 0 1 4 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
+        <svg class="mini-stat-icon tone-violet" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round">
+          <path d="M4 10a12 12 0 0 1 16 0" />
+          <path d="M7 13a8 8 0 0 1 10 0" />
+          <path d="M10 16a4 4 0 0 1 4 0" />
+          <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+        </svg>
         <span class="mini-stat-label">Signal</span>
         <span class="mini-stat-value" id="stat-rssi">&mdash;</span>
       </div>
     </div>
-    <div class="chart-header">
-      <div class="chart-title">Battery &amp; signal</div>
-      <div class="chart-legend">
-        <span class="legend-item"><i class="legend-dot" style="background:var(--series-3)"></i>Voltage</span>
-        <span class="legend-item"><i class="legend-dot legend-dash" style="border-color:var(--series-4)"></i>RSSI</span>
-        <button type="button" class="table-toggle" data-toggle="battery">View as table</button>
-      </div>
-    </div>
-    <div class="chart-card" id="battery-chart-card">
-      <div class="chart-canvas-wrap secondary"><canvas id="battery-chart"></canvas></div>
-    </div>
-    <div class="table-wrap" id="battery-table-wrap" style="display: none;">
-      <div class="chart-card table-scroll">
-        <table class="readings-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Battery (V)</th>
-              <th>RSSI (dBm)</th>
-            </tr>
-          </thead>
-          <tbody id="battery-table-body"></tbody>
-        </table>
-      </div>
+    <div class="chart-card" id="rssi-chart-card">
+      <div class="axis-unit">dBm</div>
+      <div class="chart-canvas-wrap secondary" id="rssi-chart"></div>
+      <div class="empty-state" id="rssi-empty-state" style="display: none;">No readings yet.</div>
     </div>
   </section>
+
+  <div class="table-wrap" id="unified-table-wrap" style="display: none;">
+    <div class="chart-card table-scroll">
+      <table class="readings-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Level (cm)</th>
+            <th>Volume (L)</th>
+            <th>Temp (&deg;C)</th>
+            <th>Battery (V)</th>
+            <th>RSSI (dBm)</th>
+          </tr>
+        </thead>
+        <tbody id="unified-table-body"></tbody>
+      </table>
+    </div>
+  </div>
 
   <footer>
     {% if admin %}Admin view &mdash; password protected.{% else %}Read-only public view.{% endif %}
