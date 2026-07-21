@@ -33,30 +33,36 @@
 
   <section class="chart-section chart-section-group">
     <div class="chart-header-group">
-      <div class="stat-block">
-        <div class="stat-icon tone-blue">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 15c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" />
-            <path d="M3 10c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" opacity="0.5" />
-          </svg>
+      <div class="stat-card">
+        <div class="stat-block">
+          <div class="stat-icon tone-blue">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 15c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" />
+              <path d="M3 10c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" opacity="0.5" />
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Current level</div>
+            <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
+            <div class="stat-sub" id="stat-distance">sensor to water = &mdash;</div>
+            <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
+          </div>
         </div>
-        <div class="stat-body">
-          <div class="stat-label">Current level</div>
-          <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
-          <div class="stat-sub" id="stat-distance">sensor to water = &mdash;</div>
-          <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
+        <div class="stat-sep"></div>
+        <div class="stat-block">
+          <div class="stat-icon tone-red">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 14.5V5a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0Z" />
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">MCU temperature</div>
+            <div class="stat-value"><span id="stat-temp">&mdash;</span><span class="stat-unit">&deg;C</span></div>
+            <div class="stat-sub status-line" id="stat-temp-status">&mdash;</div>
+          </div>
         </div>
-      </div>
-      <div class="mini-stat">
-        <svg class="mini-stat-icon tone-red" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 14.5V5a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0Z" />
-        </svg>
-        <span class="mini-stat-label">MCU temperature</span>
-        <span class="mini-stat-value" id="stat-temp">&mdash;</span>
-        <span class="mini-stat-unit">&deg;C</span>
-        <span class="mini-stat-sub status-line" id="stat-temp-status">&mdash;</span>
       </div>
       <button type="button" class="table-toggle" data-toggle="all">View as table</button>
     </div>
@@ -70,26 +76,37 @@
 
   <section class="chart-section chart-section-group">
     <div class="chart-header-group">
-      <div class="mini-stat">
-        <svg class="mini-stat-icon tone-green" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="7" width="16" height="10" rx="2" />
-          <path d="M19 10h2v4h-2" />
-        </svg>
-        <span class="mini-stat-label">Battery</span>
-        <span class="mini-stat-value" id="stat-battery">&mdash;</span>
-        <span class="mini-stat-sub" id="stat-battery-recharge">Est. recharge: &mdash;</span>
-      </div>
-      <div class="mini-stat">
-        <svg class="mini-stat-icon tone-violet" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round">
-          <path d="M4 10a12 12 0 0 1 16 0" />
-          <path d="M7 13a8 8 0 0 1 10 0" />
-          <path d="M10 16a4 4 0 0 1 4 0" />
-          <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
-        </svg>
-        <span class="mini-stat-label">Signal</span>
-        <span class="mini-stat-value" id="stat-rssi">&mdash;</span>
+      <div class="stat-card">
+        <div class="stat-block">
+          <div class="stat-icon tone-green">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="7" width="16" height="10" rx="2" />
+              <path d="M19 10h2v4h-2" />
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Battery</div>
+            <div class="stat-value"><span id="stat-battery">&mdash;</span><span class="stat-unit">V</span></div>
+            <div class="stat-sub" id="stat-battery-recharge">Est. recharge: &mdash;</div>
+          </div>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-block">
+          <div class="stat-icon tone-violet">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round">
+              <path d="M4 10a12 12 0 0 1 16 0" />
+              <path d="M7 13a8 8 0 0 1 10 0" />
+              <path d="M10 16a4 4 0 0 1 4 0" />
+              <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Signal</div>
+            <div class="stat-value"><span id="stat-rssi">&mdash;</span><span class="stat-unit">dBm</span></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="chart-card" id="voltage-rssi-chart-card">

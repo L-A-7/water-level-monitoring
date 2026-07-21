@@ -14,13 +14,16 @@
   --series-1-area-top: rgba(42, 120, 214, 0.35);
   --series-1-area-bottom: rgba(42, 120, 214, 0.0);
   --series-2: #e34948; /* temp - red */
+  --series-2-wash: rgba(227, 73, 72, 0.10);
   /*--series-2-area-top: rgba(227, 73, 72, 0.5);*/
   --series-2-area-top: rgba(187, 93, 92, 0.3);
   --series-2-area-bottom: rgba(187, 93, 92, 0.0);
   --series-3: #008300; /* voltage - green */
+  --series-3-wash: rgba(0, 131, 0, 0.10);
   --series-3-area-top: rgba(0, 131, 0, 0.3);
   --series-3-area-bottom: rgba(0, 131, 0, 0.0);
   --series-4: #4a3aa7; /* rssi - violet */
+  --series-4-wash: rgba(74, 58, 167, 0.10);
   --series-4-area-top: rgba(74, 58, 167, 0.3);
   --series-4-area-bottom: rgba(74, 58, 167, 0.0);
   --status-good: #0ca30c;
@@ -45,12 +48,15 @@
     --series-1-area-top: rgba(57, 135, 229, 0.55);
     --series-1-area-bottom: rgba(57, 135, 229, 0.06);
     --series-2: #e66767;
+    --series-2-wash: rgba(230, 103, 103, 0.14);
     --series-2-area-top: rgba(230, 103, 103, 0.55);
     --series-2-area-bottom: rgba(230, 103, 103, 0.06);
     --series-3: #008300;
+    --series-3-wash: rgba(0, 131, 0, 0.14);
     --series-3-area-top: rgba(0, 131, 0, 0.55);
     --series-3-area-bottom: rgba(0, 131, 0, 0.06);
     --series-4: #9085e9;
+    --series-4-wash: rgba(144, 133, 233, 0.14);
     --series-4-area-top: rgba(144, 133, 233, 0.55);
     --series-4-area-bottom: rgba(144, 133, 233, 0.06);
     --status-good: #0ca30c;
@@ -74,12 +80,15 @@
   --series-1-area-top: rgba(57, 135, 229, 0.55);
   --series-1-area-bottom: rgba(57, 135, 229, 0.06);
   --series-2: #e66767;
+  --series-2-wash: rgba(230, 103, 103, 0.14);
   --series-2-area-top: rgba(230, 103, 103, 0.55);
   --series-2-area-bottom: rgba(230, 103, 103, 0.06);
   --series-3: #008300;
+  --series-3-wash: rgba(0, 131, 0, 0.14);
   --series-3-area-top: rgba(0, 131, 0, 0.55);
   --series-3-area-bottom: rgba(0, 131, 0, 0.06);
   --series-4: #9085e9;
+  --series-4-wash: rgba(144, 133, 233, 0.14);
   --series-4-area-top: rgba(144, 133, 233, 0.55);
   --series-4-area-bottom: rgba(144, 133, 233, 0.06);
   --status-good: #0ca30c;
@@ -200,9 +209,23 @@ body {
   margin-left: auto;
 }
 
+.stat-card {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  flex: 1;
+}
+
 .stat-block {
+  flex: 1;
   display: flex;
   gap: 14px;
+}
+
+.stat-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
 }
 
 .stat-icon {
@@ -218,6 +241,21 @@ body {
 .stat-icon.tone-blue {
   background: var(--series-1-wash);
   color: var(--series-1);
+}
+
+.stat-icon.tone-red {
+  background: var(--series-2-wash);
+  color: var(--series-2);
+}
+
+.stat-icon.tone-green {
+  background: var(--series-3-wash);
+  color: var(--series-3);
+}
+
+.stat-icon.tone-violet {
+  background: var(--series-4-wash);
+  color: var(--series-4);
 }
 
 .stat-label {
@@ -260,15 +298,11 @@ body {
   font-weight: 700;
 }
 
-.status-line.status-good {
+.status-good {
   color: var(--status-good);
 }
 
-.status-line.status-warning {
-  color: var(--status-warning);
-}
-
-.mini-stat-value.status-warning {
+.status-warning {
   color: var(--status-warning);
 }
 
@@ -276,57 +310,6 @@ body {
 
 .chart-section {
   margin-bottom: 24px;
-}
-
-.mini-stat {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.mini-stat-icon {
-  align-self: center;
-  flex: none;
-}
-
-.mini-stat-icon.tone-red {
-  color: var(--series-2);
-}
-
-.mini-stat-icon.tone-green {
-  color: var(--series-3);
-}
-
-.mini-stat-icon.tone-violet {
-  color: var(--series-4);
-}
-
-.mini-stat-label {
-  text-transform: uppercase;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
-  align-self: center;
-  margin-right: 2px;
-}
-
-.mini-stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.mini-stat-unit {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.mini-stat-sub {
-  color: var(--text-muted);
-  margin-left: 4px;
 }
 
 .table-toggle {
@@ -366,11 +349,11 @@ body {
 }
 
 .axis-unit-pane1-group1 {
-  top: 376px;
+  top: 421px;
 }
 
 .axis-unit-pane1-group2 {
-  top: 196px;
+  top: 256px;
 }
 
 .chart-canvas-wrap {
@@ -825,6 +808,16 @@ footer {
     margin-left: 0;
   }
 
+  .stat-card {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stat-sep {
+    width: auto;
+    height: 1px;
+  }
+
   .table-toggle {
     align-self: flex-start;
     margin-top: 0;
@@ -858,11 +851,11 @@ footer {
   }
 
   .axis-unit-pane1-group1 {
-    top: 296px;
+    top: 331px;
   }
 
   .axis-unit-pane1-group2 {
-    top: 156px;
+    top: 203px;
   }
 
   .settings-savebar {

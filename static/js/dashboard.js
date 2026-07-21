@@ -28,8 +28,8 @@ const GROUP_DEFS = {
     containerId: "level-temp-chart",
     cardId: "level-temp-chart-card",
     emptyId: "level-temp-empty-state",
-    paneHeights: [360, 180],
-    paneHeightsMobile: [280, 140],
+    paneHeights: [405, 135],
+    paneHeightsMobile: [315, 105],
     series: [
       {
         key: "level",
@@ -61,8 +61,8 @@ const GROUP_DEFS = {
     containerId: "voltage-rssi-chart",
     cardId: "voltage-rssi-chart-card",
     emptyId: "voltage-rssi-empty-state",
-    paneHeights: [180, 180],
-    paneHeightsMobile: [140, 140],
+    paneHeights: [240, 120],
+    paneHeightsMobile: [187, 93],
     series: [
       {
         key: "voltage",
@@ -341,12 +341,12 @@ function renderSummary(data) {
     tempStatusEl.textContent = "—";
   }
 
-  document.getElementById("stat-battery").textContent = data.battery_v !== null ? `${fmtNumber(data.battery_v, 2)} V` : "—";
+  document.getElementById("stat-battery").textContent = data.battery_v !== null ? fmtNumber(data.battery_v, 2) : "—";
   document.getElementById("stat-battery-recharge").textContent = data.battery_critical_date
     ? `Est. recharge by: ${fmtDateOnly(data.battery_critical_date)}`
     : "Est. recharge: —";
   const rssiEl = document.getElementById("stat-rssi");
-  rssiEl.textContent = data.rssi !== null && data.rssi !== undefined ? `${fmtNumber(data.rssi)} dBm` : "—";
+  rssiEl.textContent = data.rssi !== null && data.rssi !== undefined ? fmtNumber(data.rssi) : "—";
   rssiEl.classList.toggle("status-warning", Boolean(data.weak_signal_warning));
 }
 
