@@ -12,63 +12,88 @@ const TANK_ENHANCED_DAYS = 60;
 const TEMP_OK_MIN_C = 0;
 const TEMP_OK_MAX_C = 45;
 
-const CHART_DEFS = {
-  level: {
-    containerId: "level-chart",
-    emptyId: "level-empty-state",
-    type: "area",
-    color: () => cssVar("--series-1"),
-    areaTopColor: () => cssVar("--series-1-area-top"),
-    areaBottomColor: () => cssVar("--series-1-area-bottom"),
-    priceFormat: { type: "price", precision: 1, minMove: 0.1 },
-    decimals: 1,
-    unit: "cm",
-    label: "Level",
-    extract: (r) => r.level_cm,
+// Approximate pixel height of the divider lightweight-charts draws between
+// stacked panes — used to convert a lower pane's own-coordinate y position
+// (from priceToCoordinate) into a position relative to the whole container.
+const PANE_SEPARATOR = 6;
+
+const MOBILE_QUERY = window.matchMedia("(max-width: 640px)");
+
+// Each group is one lightweight-charts instance with two stacked panes
+// sharing a time axis (and therefore zoom/pan + crosshair), but each pane
+// keeps its own independent price scale — no dual-axis overlap. Zooming is
+// independent between the two groups, since they're separate chart instances.
+const GROUP_DEFS = {
+  levelTemp: {
+    containerId: "level-temp-chart",
+    cardId: "level-temp-chart-card",
+    emptyId: "level-temp-empty-state",
+    paneHeights: [360, 180],
+    paneHeightsMobile: [280, 140],
+    series: [
+      {
+        key: "level",
+        type: "area",
+        color: () => cssVar("--series-1"),
+        areaTopColor: () => cssVar("--series-1-area-top"),
+        areaBottomColor: () => cssVar("--series-1-area-bottom"),
+        priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+        decimals: 1,
+        unit: "cm",
+        label: "Level",
+        extract: (r) => r.level_cm,
+      },
+      {
+        key: "temp",
+        type: "area",
+        color: () => cssVar("--series-2"),
+        areaTopColor: () => cssVar("--series-2-area-top"),
+        areaBottomColor: () => cssVar("--series-2-area-bottom"),
+        priceFormat: { type: "price", precision: 1, minMove: 0.1 },
+        decimals: 1,
+        unit: "°C",
+        label: "Temp",
+        extract: (r) => r.chip_temp_c,
+      },
+    ],
   },
-  temp: {
-    containerId: "temp-chart",
-    emptyId: "temp-empty-state",
-    type: "area",
-    color: () => cssVar("--series-2"),
-    areaTopColor: () => cssVar("--series-2-area-top"),
-    areaBottomColor: () => cssVar("--series-2-area-bottom"),
-    priceFormat: { type: "price", precision: 1, minMove: 0.1 },
-    decimals: 1,
-    unit: "°C",
-    label: "Temp",
-    extract: (r) => r.chip_temp_c,
-  },
-  voltage: {
-    containerId: "voltage-chart",
-    emptyId: "voltage-empty-state",
-    type: "area",
-    color: () => cssVar("--series-3"),
-    areaTopColor: () => cssVar("--series-3-area-top"),
-    areaBottomColor: () => cssVar("--series-3-area-bottom"),
-    priceFormat: { type: "price", precision: 2, minMove: 0.01 },
-    decimals: 2,
-    unit: "V",
-    label: "Battery",
-    extract: (r) => (r.battery_mv !== null && r.battery_mv !== undefined ? r.battery_mv / 1000 : null),
-  },
-  rssi: {
-    containerId: "rssi-chart",
-    emptyId: "rssi-empty-state",
-    type: "area",
-    color: () => cssVar("--series-4"),
-    areaTopColor: () => cssVar("--series-4-area-top"),
-    areaBottomColor: () => cssVar("--series-4-area-bottom"),
-    priceFormat: { type: "price", precision: 0, minMove: 1 },
-    decimals: 0,
-    unit: "dBm",
-    label: "RSSI",
-    extract: (r) => r.rssi,
+  voltageRssi: {
+    containerId: "voltage-rssi-chart",
+    cardId: "voltage-rssi-chart-card",
+    emptyId: "voltage-rssi-empty-state",
+    paneHeights: [180, 180],
+    paneHeightsMobile: [140, 140],
+    series: [
+      {
+        key: "voltage",
+        type: "area",
+        color: () => cssVar("--series-3"),
+        areaTopColor: () => cssVar("--series-3-area-top"),
+        areaBottomColor: () => cssVar("--series-3-area-bottom"),
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        decimals: 2,
+        unit: "V",
+        label: "Battery",
+        extract: (r) => (r.battery_mv !== null && r.battery_mv !== undefined ? r.battery_mv / 1000 : null),
+      },
+      {
+        key: "rssi",
+        type: "area",
+        color: () => cssVar("--series-4"),
+        areaTopColor: () => cssVar("--series-4-area-top"),
+        areaBottomColor: () => cssVar("--series-4-area-bottom"),
+        priceFormat: { type: "price", precision: 0, minMove: 1 },
+        decimals: 0,
+        unit: "dBm",
+        label: "RSSI",
+        extract: (r) => r.rssi,
+      },
+    ],
   },
 };
 
 const state = {
-  charts: {},
+  groups: {},
   tableVisible: false,
 };
 
@@ -142,6 +167,11 @@ function baseChartOptions() {
       textColor: muted,
       fontSize: 12,
       attributionLogo: false,
+      panes: {
+        separatorColor: gridline,
+        separatorHoverColor: gridline,
+        enableResize: false,
+      },
     },
     grid: {
       vertLines: { color: gridline },
@@ -167,80 +197,117 @@ function baseChartOptions() {
     },
     crosshair: {
       mode: LightweightCharts.CrosshairMode.Normal,
-      vertLine: { color: axis, width: 1, style: LightweightCharts.LineStyle.Solid, labelVisible: false },
+      // The date shows once, natively, on the shared time axis at the
+      // bottom — our own per-pane tooltips only need to carry the value.
+      vertLine: { color: axis, width: 1, style: LightweightCharts.LineStyle.Solid, labelVisible: true },
       horzLine: { color: axis, width: 1, style: LightweightCharts.LineStyle.Solid },
     },
   };
 }
 
-function createChartFor(def) {
+function createGroupChart(def) {
   const container = document.getElementById(def.containerId);
   const chart = LightweightCharts.createChart(container, baseChartOptions());
-  const color = def.color();
 
-  const seriesBase = {
-    priceFormat: def.priceFormat,
-    priceLineVisible: false,
-    lastValueVisible: true,
-    crosshairMarkerRadius: 4,
-  };
+  const seriesEntries = {};
+  def.series.forEach((sdef, paneIndex) => {
+    const color = sdef.color();
+    const seriesBase = {
+      priceFormat: sdef.priceFormat,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerRadius: 4,
+    };
 
-  const series =
-    def.type === "area"
-      ? chart.addAreaSeries({
-          ...seriesBase,
-          lineColor: color,
-          topColor: def.areaTopColor(),
-          bottomColor: def.areaBottomColor(),
-          lineWidth: 2,
-        })
-      : chart.addLineSeries({ ...seriesBase, color, lineWidth: 2 });
+    const series =
+      sdef.type === "area"
+        ? chart.addSeries(
+            LightweightCharts.AreaSeries,
+            {
+              ...seriesBase,
+              lineColor: color,
+              topColor: sdef.areaTopColor(),
+              bottomColor: sdef.areaBottomColor(),
+              lineWidth: 2,
+            },
+            paneIndex,
+          )
+        : chart.addSeries(LightweightCharts.LineSeries, { ...seriesBase, color, lineWidth: 2 }, paneIndex);
 
-  const tooltip = document.createElement("div");
-  tooltip.className = "chart-tooltip";
-  container.parentElement.appendChild(tooltip);
+    const tooltip = document.createElement("div");
+    tooltip.className = "chart-tooltip";
+    container.parentElement.appendChild(tooltip);
 
-  return { chart, series, container, tooltip, points: [], pointsMap: new Map() };
+    seriesEntries[sdef.key] = { series, tooltip, paneIndex, def: sdef, points: [], pointsMap: new Map() };
+  });
+
+  chart.subscribeCrosshairMove((param) => {
+    updateGroupTooltips(def, container, chart, seriesEntries, param);
+  });
+
+  return { chart, container, seriesEntries };
 }
 
-function initCharts() {
-  for (const [key, def] of Object.entries(CHART_DEFS)) {
-    state.charts[key] = createChartFor(def);
-    state.charts[key].chart.subscribeCrosshairMove((param) => {
-      updateTooltip(key, param.time);
-    });
+function paneYOffset(def, paneIndex) {
+  const heights = MOBILE_QUERY.matches ? def.paneHeightsMobile : def.paneHeights;
+  let offset = 0;
+  for (let i = 0; i < paneIndex; i++) offset += heights[i] + PANE_SEPARATOR;
+  return offset;
+}
+
+function applyPaneHeights() {
+  const mobile = MOBILE_QUERY.matches;
+  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+    const group = state.groups[key];
+    const heights = mobile ? def.paneHeightsMobile : def.paneHeights;
+    heights.forEach((height, i) => group.chart.panes()[i].setHeight(height));
   }
 }
 
-function updateTooltip(key, time) {
-  const entry = state.charts[key];
-  const value = time !== undefined ? entry.pointsMap.get(time) : undefined;
-  const x = value !== undefined ? entry.chart.timeScale().timeToCoordinate(time) : null;
-  const y = value !== undefined ? entry.series.priceToCoordinate(value) : null;
-  if (value === undefined || x === null || y === null) {
-    entry.tooltip.style.display = "none";
-    return;
+function initGroupCharts() {
+  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+    state.groups[key] = createGroupChart(def);
   }
-
-  const def = CHART_DEFS[key];
-  entry.tooltip.innerHTML = `${fmtTime(new Date(time * 1000).toISOString())} · <strong>${fmtNumber(value, def.decimals)} ${def.unit}</strong>`;
-  entry.tooltip.style.display = "block";
-  const maxLeft = Math.max(entry.container.clientWidth - entry.tooltip.offsetWidth - 4, 4);
-  entry.tooltip.style.left = `${Math.min(Math.max(x + 12, 4), maxLeft)}px`;
-  entry.tooltip.style.top = `${Math.max(y - 32, 4)}px`;
+  applyPaneHeights();
+  MOBILE_QUERY.addEventListener("change", applyPaneHeights);
 }
 
-function updateChart(key, readings) {
-  const def = CHART_DEFS[key];
-  const entry = state.charts[key];
-  const points = pointsFor(readings, def.extract);
+function updateGroupTooltips(def, container, chart, seriesEntries, param) {
+  const x = param.time ? chart.timeScale().timeToCoordinate(param.time) : null;
 
-  entry.points = points;
-  entry.pointsMap = new Map(points.map((p) => [p.time, p.value]));
-  entry.series.setData(points);
-  entry.chart.timeScale().fitContent();
+  for (const entry of Object.values(seriesEntries)) {
+    const value = param.time !== undefined ? entry.pointsMap.get(param.time) : undefined;
+    const yInPane = value !== undefined ? entry.series.priceToCoordinate(value) : null;
+    if (value === undefined || x === null || yInPane === null) {
+      entry.tooltip.style.display = "none";
+      continue;
+    }
+    const y = yInPane + paneYOffset(def, entry.paneIndex);
 
-  document.getElementById(def.emptyId).style.display = points.length ? "none" : "flex";
+    entry.tooltip.innerHTML = `<strong>${fmtNumber(value, entry.def.decimals)} ${entry.def.unit}</strong>`;
+    entry.tooltip.style.display = "block";
+    const maxLeft = Math.max(container.clientWidth - entry.tooltip.offsetWidth - 4, 4);
+    entry.tooltip.style.left = `${Math.min(Math.max(x + 12, 4), maxLeft)}px`;
+    entry.tooltip.style.top = `${Math.max(y - 32, 4)}px`;
+  }
+}
+
+function updateGroupChart(key, readings) {
+  const def = GROUP_DEFS[key];
+  const group = state.groups[key];
+  let anyPoints = false;
+
+  for (const sdef of def.series) {
+    const entry = group.seriesEntries[sdef.key];
+    const points = pointsFor(readings, sdef.extract);
+    entry.points = points;
+    entry.pointsMap = new Map(points.map((p) => [p.time, p.value]));
+    entry.series.setData(points);
+    if (points.length) anyPoints = true;
+  }
+
+  group.chart.timeScale().fitContent();
+  document.getElementById(def.emptyId).style.display = anyPoints ? "none" : "flex";
 }
 
 function renderSummary(data) {
@@ -320,8 +387,8 @@ async function loadRange(presetKey) {
   const res = await fetch(`/watertank/api/readings?${params.toString()}`);
   const data = await res.json();
 
-  for (const key of Object.keys(CHART_DEFS)) {
-    updateChart(key, data.readings);
+  for (const key of Object.keys(GROUP_DEFS)) {
+    updateGroupChart(key, data.readings);
   }
 
   renderUnifiedTable(data.readings);
@@ -342,7 +409,7 @@ function initRangePills() {
 function initTableToggle() {
   const toggle = document.querySelector('.table-toggle[data-toggle="all"]');
   const tableWrap = document.getElementById("unified-table-wrap");
-  const cardIds = ["level-chart-card", "temp-chart-card", "voltage-chart-card", "rssi-chart-card"];
+  const cardIds = Object.values(GROUP_DEFS).map((def) => def.cardId);
   toggle.addEventListener("click", () => {
     state.tableVisible = !state.tableVisible;
     tableWrap.style.display = state.tableVisible ? "block" : "none";
@@ -354,7 +421,7 @@ function initTableToggle() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initCharts();
+  initGroupCharts();
   initRangePills();
   initTableToggle();
   const savedRange = getCookie(RANGE_COOKIE) || DEFAULT_RANGE;

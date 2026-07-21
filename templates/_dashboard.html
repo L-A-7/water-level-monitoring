@@ -31,8 +31,8 @@
 
   <p class="last-reading" id="last-reading">Last reading: &mdash;</p>
 
-  <section class="chart-section chart-section-main">
-    <div class="chart-header-stat">
+  <section class="chart-section chart-section-group">
+    <div class="chart-header-group">
       <div class="stat-block">
         <div class="stat-icon tone-blue">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
@@ -48,17 +48,6 @@
           <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
         </div>
       </div>
-      <button type="button" class="table-toggle" data-toggle="all">View as table</button>
-    </div>
-    <div class="chart-card" id="level-chart-card">
-      <div class="axis-unit">cm</div>
-      <div class="chart-canvas-wrap" id="level-chart"></div>
-      <div class="empty-state" id="level-empty-state" style="display: none;">No readings yet.</div>
-    </div>
-  </section>
-
-  <section class="chart-section chart-section-sub">
-    <div class="chart-header-mini">
       <div class="mini-stat">
         <svg class="mini-stat-icon tone-red" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -69,16 +58,18 @@
         <span class="mini-stat-unit">&deg;C</span>
         <span class="mini-stat-sub status-line" id="stat-temp-status">&mdash;</span>
       </div>
+      <button type="button" class="table-toggle" data-toggle="all">View as table</button>
     </div>
-    <div class="chart-card" id="temp-chart-card">
-      <div class="axis-unit">&deg;C</div>
-      <div class="chart-canvas-wrap secondary" id="temp-chart"></div>
-      <div class="empty-state" id="temp-empty-state" style="display: none;">No readings yet.</div>
+    <div class="chart-card" id="level-temp-chart-card">
+      <div class="axis-unit axis-unit-pane0">cm</div>
+      <div class="axis-unit axis-unit-pane1 axis-unit-pane1-group1">&deg;C</div>
+      <div class="chart-canvas-wrap chart-canvas-wrap-group1" id="level-temp-chart"></div>
+      <div class="empty-state" id="level-temp-empty-state" style="display: none;">No readings yet.</div>
     </div>
   </section>
 
-  <section class="chart-section chart-section-sub">
-    <div class="chart-header-mini">
+  <section class="chart-section chart-section-group">
+    <div class="chart-header-group">
       <div class="mini-stat">
         <svg class="mini-stat-icon tone-green" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
@@ -89,16 +80,6 @@
         <span class="mini-stat-value" id="stat-battery">&mdash;</span>
         <span class="mini-stat-sub" id="stat-battery-recharge">Est. recharge: &mdash;</span>
       </div>
-    </div>
-    <div class="chart-card" id="voltage-chart-card">
-      <div class="axis-unit">V</div>
-      <div class="chart-canvas-wrap secondary" id="voltage-chart"></div>
-      <div class="empty-state" id="voltage-empty-state" style="display: none;">No readings yet.</div>
-    </div>
-  </section>
-
-  <section class="chart-section chart-section-sub">
-    <div class="chart-header-mini">
       <div class="mini-stat">
         <svg class="mini-stat-icon tone-violet" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round">
@@ -111,10 +92,11 @@
         <span class="mini-stat-value" id="stat-rssi">&mdash;</span>
       </div>
     </div>
-    <div class="chart-card" id="rssi-chart-card">
-      <div class="axis-unit">dBm</div>
-      <div class="chart-canvas-wrap secondary" id="rssi-chart"></div>
-      <div class="empty-state" id="rssi-empty-state" style="display: none;">No readings yet.</div>
+    <div class="chart-card" id="voltage-rssi-chart-card">
+      <div class="axis-unit axis-unit-pane0">V</div>
+      <div class="axis-unit axis-unit-pane1 axis-unit-pane1-group2">dBm</div>
+      <div class="chart-canvas-wrap chart-canvas-wrap-group2" id="voltage-rssi-chart"></div>
+      <div class="empty-state" id="voltage-rssi-empty-state" style="display: none;">No readings yet.</div>
     </div>
   </section>
 
