@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS readings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_readings_reading_time ON readings(reading_time);
+CREATE INDEX IF NOT EXISTS idx_readings_request_seq ON readings(request_id, seq);
 
 -- Single row (id=1): admin-desired device settings, pushed back to the
 -- device in the ingest response until changed. NULL means "no override".
