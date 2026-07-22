@@ -220,7 +220,7 @@ body {
 .stat-block {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
 }
 
@@ -846,6 +846,7 @@ footer {
   .stat-card {
     flex-direction: column;
     gap: 16px;
+    padding: 20px;
   }
 
   .stat-sep {
