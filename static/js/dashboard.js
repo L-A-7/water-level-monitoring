@@ -1,16 +1,17 @@
+// bufferDays: how much data to actually fetch for a given preset, beyond
+// what's initially shown — so zooming/panning out from e.g. 24h to a few
+// days doesn't need a fresh request. null means "fetch just this preset's
+// own window" (already the widest tier, or intentionally unbounded).
 const RANGE_PRESETS = [
-  { key: "24h", label: "24h", days: 1 },
-  { key: "7", label: "7d", days: 7 },
-  { key: "30", label: "30d", days: 30 },
-  { key: "60", label: "60d", days: 60 },
-  { key: "all", label: "All", days: null },
+  { key: "24h", label: "24h", days: 1, bufferDays: 7 },
+  { key: "7", label: "7d", days: 7, bufferDays: 30 },
+  { key: "30", label: "30d", days: 30, bufferDays: 60 },
+  { key: "60", label: "60d", days: 60, bufferDays: null },
+  { key: "all", label: "All", days: null, bufferDays: null },
 ];
 const DEFAULT_RANGE = "60";
-const RANGE_COOKIE = "tank_range";
 
 const TANK_ENHANCED_DAYS = 60;
-const TEMP_OK_MIN_C = 0;
-const TEMP_OK_MAX_C = 45;
 
 // Approximate pixel height of the divider lightweight-charts draws between
 // stacked panes — used to convert a lower pane's own-coordinate y position
@@ -28,6 +29,15 @@ const GROUP_DEFS = {
     containerId: "level-temp-chart",
     cardId: "level-temp-chart-card",
     emptyId: "level-temp-empty-state",
+    rangeCookie: "tank_range_level_temp",
+    tableWrapId: "level-temp-table-wrap",
+    tableBodyId: "level-temp-table-body",
+    tableColumns: [
+      (r) => fmtTime(r.time),
+      (r) => (r.level_cm !== null ? fmtNumber(r.level_cm, 1) : "no echo"),
+      (r) => (r.volume_liters !== null ? fmtNumber(r.volume_liters) : "—"),
+      (r) => (r.chip_temp_c !== null ? fmtNumber(r.chip_temp_c, 1) : "—"),
+    ],
     paneHeights: [405, 135],
     paneHeightsMobile: [315, 105],
     series: [
@@ -61,6 +71,10 @@ const GROUP_DEFS = {
     containerId: "voltage-rssi-chart",
     cardId: "voltage-rssi-chart-card",
     emptyId: "voltage-rssi-empty-state",
+    rangeCookie: "tank_range_voltage_rssi",
+    tableWrapId: "voltage-rssi-table-wrap",
+    tableBodyId: "voltage-rssi-table-body",
+    tableColumns: [(r) => fmtTime(r.time), (r) => fmtNumber(r.battery_mv / 1000, 2), (r) => (r.rssi !== null ? fmtNumber(r.rssi) : "—")],
     paneHeights: [240, 120],
     paneHeightsMobile: [187, 93],
     series: [
@@ -94,7 +108,7 @@ const GROUP_DEFS = {
 
 const state = {
   groups: {},
-  tableVisible: false,
+  tableVisible: {},
 };
 
 function getCookie(name) {
@@ -159,6 +173,10 @@ function baseChartOptions() {
   const axis = cssVar("--axis");
   const surface = cssVar("--surface");
   const muted = cssVar("--text-muted");
+  // Same subtle divider used for .stat-sep between the two stat blocks in
+  // each header — a bit more present than the plot gridlines, without
+  // visually splitting the pair apart.
+  const paneSeparator = cssVar("--border");
 
   return {
     autoSize: true,
@@ -168,8 +186,8 @@ function baseChartOptions() {
       fontSize: 12,
       attributionLogo: false,
       panes: {
-        separatorColor: gridline,
-        separatorHoverColor: gridline,
+        separatorColor: paneSeparator,
+        separatorHoverColor: paneSeparator,
         enableResize: false,
       },
     },
@@ -292,7 +310,7 @@ function updateGroupTooltips(def, container, chart, seriesEntries, param) {
   }
 }
 
-function updateGroupChart(key, readings) {
+function updateGroupChart(key, readings, visibleRange) {
   const def = GROUP_DEFS[key];
   const group = state.groups[key];
   let anyPoints = false;
@@ -306,7 +324,11 @@ function updateGroupChart(key, readings) {
     if (points.length) anyPoints = true;
   }
 
-  group.chart.timeScale().fitContent();
+  if (visibleRange) {
+    group.chart.timeScale().setVisibleRange(visibleRange);
+  } else {
+    group.chart.timeScale().fitContent();
+  }
   document.getElementById(def.emptyId).style.display = anyPoints ? "none" : "flex";
 }
 
@@ -318,8 +340,8 @@ function renderSummary(data) {
   document.getElementById("stat-level").textContent = data.level_cm !== null ? fmtNumber(data.level_cm, 1) : "—";
   document.getElementById("stat-distance").textContent =
     data.distance_cm !== null && data.distance_cm !== undefined
-      ? `sensor to water-surface ≈ ${fmtNumber(data.distance_cm, 1)} cm`
-      : "sensor to water-surface = —";
+      ? `Sensor to water ≈ ${fmtNumber(data.distance_cm, 1)} cm`
+      : "Sensor to water = —";
 
   const emptyDateEl = document.getElementById("stat-empty-date");
   if (data.tank_empty_date) {
@@ -331,15 +353,6 @@ function renderSummary(data) {
   }
 
   document.getElementById("stat-temp").textContent = data.chip_temp_c !== null ? fmtNumber(data.chip_temp_c, 1) : "—";
-  const tempStatusEl = document.getElementById("stat-temp-status");
-  tempStatusEl.classList.remove("status-good", "status-warning");
-  if (data.chip_temp_c !== null && data.chip_temp_c !== undefined) {
-    const inRange = data.chip_temp_c >= TEMP_OK_MIN_C && data.chip_temp_c <= TEMP_OK_MAX_C;
-    tempStatusEl.textContent = inRange ? "Optimal operating range" : "Outside optimal range";
-    tempStatusEl.classList.add(inRange ? "status-good" : "status-warning");
-  } else {
-    tempStatusEl.textContent = "—";
-  }
 
   document.getElementById("stat-battery").textContent = data.battery_v !== null ? fmtNumber(data.battery_v, 2) : "—";
   document.getElementById("stat-battery-recharge").textContent = data.battery_critical_date
@@ -350,48 +363,47 @@ function renderSummary(data) {
   rssiEl.classList.toggle("status-warning", Boolean(data.weak_signal_warning));
 }
 
-function renderUnifiedTable(readings) {
-  const tbody = document.getElementById("unified-table-body");
+function renderGroupTable(key, readings) {
+  const def = GROUP_DEFS[key];
+  const tbody = document.getElementById(def.tableBodyId);
   tbody.innerHTML = "";
   for (const r of [...readings].reverse()) {
     const tr = document.createElement("tr");
-    const cells = [
-      fmtTime(r.time),
-      r.level_cm !== null ? fmtNumber(r.level_cm, 1) : "no echo",
-      r.volume_liters !== null ? fmtNumber(r.volume_liters) : "—",
-      r.chip_temp_c !== null ? fmtNumber(r.chip_temp_c, 1) : "—",
-      fmtNumber(r.battery_mv / 1000, 2),
-      r.rssi !== null ? fmtNumber(r.rssi) : "—",
-    ];
-    for (const value of cells) {
+    for (const cellValue of def.tableColumns) {
       const td = document.createElement("td");
-      td.textContent = value;
+      td.textContent = cellValue(r);
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
   }
 }
 
-async function loadRange(presetKey) {
+async function loadGroupRange(key, presetKey) {
+  const def = GROUP_DEFS[key];
   const preset = RANGE_PRESETS.find((p) => p.key === presetKey) || RANGE_PRESETS.find((p) => p.key === DEFAULT_RANGE);
 
-  document.querySelectorAll("#range-pills button[data-range]").forEach((btn) => {
+  document.querySelectorAll(`.range-pills[data-group="${key}"] button[data-range]`).forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.range === preset.key);
   });
-  setCookie(RANGE_COOKIE, preset.key);
+  setCookie(def.rangeCookie, preset.key);
 
+  const fetchDays = preset.bufferDays !== null ? preset.bufferDays : preset.days;
   const params = new URLSearchParams();
-  const start = rangeStartIso(preset.days);
+  const start = rangeStartIso(fetchDays);
   if (start) params.set("start", start);
 
   const res = await fetch(`/watertank/api/readings?${params.toString()}`);
   const data = await res.json();
 
-  for (const key of Object.keys(GROUP_DEFS)) {
-    updateGroupChart(key, data.readings);
+  let visibleRange = null;
+  if (preset.days !== null && data.readings.length) {
+    const to = unixSeconds(data.readings[data.readings.length - 1].time);
+    const from = to - preset.days * 24 * 60 * 60;
+    visibleRange = { from, to };
   }
 
-  renderUnifiedTable(data.readings);
+  updateGroupChart(key, data.readings, visibleRange);
+  renderGroupTable(key, data.readings);
 }
 
 async function loadSummary() {
@@ -401,30 +413,35 @@ async function loadSummary() {
 }
 
 function initRangePills() {
-  document.querySelectorAll("#range-pills button[data-range]").forEach((btn) => {
-    btn.addEventListener("click", () => loadRange(btn.dataset.range));
-  });
+  for (const key of Object.keys(GROUP_DEFS)) {
+    document.querySelectorAll(`.range-pills[data-group="${key}"] button[data-range]`).forEach((btn) => {
+      btn.addEventListener("click", () => loadGroupRange(key, btn.dataset.range));
+    });
+  }
 }
 
-function initTableToggle() {
-  const toggle = document.querySelector('.table-toggle[data-toggle="all"]');
-  const tableWrap = document.getElementById("unified-table-wrap");
-  const cardIds = Object.values(GROUP_DEFS).map((def) => def.cardId);
-  toggle.addEventListener("click", () => {
-    state.tableVisible = !state.tableVisible;
-    tableWrap.style.display = state.tableVisible ? "block" : "none";
-    for (const id of cardIds) {
-      document.getElementById(id).style.display = state.tableVisible ? "none" : "block";
-    }
-    toggle.textContent = state.tableVisible ? "View as chart" : "View as table";
-  });
+function initTableToggles() {
+  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+    const toggle = document.querySelector(`.table-toggle[data-toggle="${key}"]`);
+    const tableWrap = document.getElementById(def.tableWrapId);
+    const chartCard = document.getElementById(def.cardId);
+    state.tableVisible[key] = false;
+    toggle.addEventListener("click", () => {
+      state.tableVisible[key] = !state.tableVisible[key];
+      tableWrap.style.display = state.tableVisible[key] ? "block" : "none";
+      chartCard.style.display = state.tableVisible[key] ? "none" : "block";
+      toggle.textContent = state.tableVisible[key] ? "View as chart" : "View as table";
+    });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   initGroupCharts();
   initRangePills();
-  initTableToggle();
-  const savedRange = getCookie(RANGE_COOKIE) || DEFAULT_RANGE;
-  loadRange(savedRange);
+  initTableToggles();
+  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+    const savedRange = getCookie(def.rangeCookie) || DEFAULT_RANGE;
+    loadGroupRange(key, savedRange);
+  }
   loadSummary();
 });

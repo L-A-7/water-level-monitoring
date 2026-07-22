@@ -19,19 +19,13 @@
         Settings
       </a>
       {% endif %}
-      <div class="range-pills" id="range-pills">
-        <button type="button" data-range="24h">24h</button>
-        <button type="button" data-range="7">7d</button>
-        <button type="button" data-range="30">30d</button>
-        <button type="button" data-range="60">60d</button>
-        <button type="button" data-range="all">All</button>
-      </div>
     </div>
   </header>
 
   <p class="last-reading" id="last-reading">Last reading: &mdash;</p>
 
   <section class="chart-section chart-section-group">
+    <div class="chart-title">Water Level &amp; MCU temperature</div>
     <div class="chart-header-group">
       <div class="stat-card">
         <div class="stat-block">
@@ -42,11 +36,15 @@
               <path d="M3 10c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0 3.6 2 4.8 0" opacity="0.5" />
             </svg>
           </div>
-          <div class="stat-body">
-            <div class="stat-label">Current level</div>
-            <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
-            <div class="stat-sub" id="stat-distance">sensor to water = &mdash;</div>
-            <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
+          <div class="stat-content">
+            <div class="stat-col">
+              <div class="stat-label">Current level</div>
+              <div class="stat-value"><span id="stat-level">&mdash;</span><span class="stat-unit">cm</span></div>
+            </div>
+            <div class="stat-col stat-col-extra">
+              <div class="stat-sub" id="stat-distance">Sensor to water = &mdash;</div>
+              <div class="stat-link" id="stat-empty-date">Estimated empty date: &mdash;</div>
+            </div>
           </div>
         </div>
         <div class="stat-sep"></div>
@@ -57,14 +55,12 @@
               <path d="M12 14.5V5a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0Z" />
             </svg>
           </div>
-          <div class="stat-body">
+          <div class="stat-col">
             <div class="stat-label">MCU temperature</div>
             <div class="stat-value"><span id="stat-temp">&mdash;</span><span class="stat-unit">&deg;C</span></div>
-            <div class="stat-sub status-line" id="stat-temp-status">&mdash;</div>
           </div>
         </div>
       </div>
-      <button type="button" class="table-toggle" data-toggle="all">View as table</button>
     </div>
     <div class="chart-card" id="level-temp-chart-card">
       <div class="axis-unit axis-unit-pane0">cm</div>
@@ -72,9 +68,37 @@
       <div class="chart-canvas-wrap chart-canvas-wrap-group1" id="level-temp-chart"></div>
       <div class="empty-state" id="level-temp-empty-state" style="display: none;">No readings yet.</div>
     </div>
+    <div class="chart-header">
+      <div class="chart-header-actions">
+        <div class="range-pills" data-group="levelTemp">
+          <button type="button" data-range="24h">24h</button>
+          <button type="button" data-range="7">7d</button>
+          <button type="button" data-range="30">30d</button>
+          <button type="button" data-range="60">60d</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+        <button type="button" class="table-toggle" data-toggle="levelTemp">View as table</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="level-temp-table-wrap" style="display: none;">
+      <div class="chart-card table-scroll">
+        <table class="readings-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Level (cm)</th>
+              <th>Volume (L)</th>
+              <th>Temp (&deg;C)</th>
+            </tr>
+          </thead>
+          <tbody id="level-temp-table-body"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <section class="chart-section chart-section-group">
+    <div class="chart-title">Battery &amp; WIFI signal</div>
     <div class="chart-header-group">
       <div class="stat-card">
         <div class="stat-block">
@@ -115,25 +139,33 @@
       <div class="chart-canvas-wrap chart-canvas-wrap-group2" id="voltage-rssi-chart"></div>
       <div class="empty-state" id="voltage-rssi-empty-state" style="display: none;">No readings yet.</div>
     </div>
-  </section>
-
-  <div class="table-wrap" id="unified-table-wrap" style="display: none;">
-    <div class="chart-card table-scroll">
-      <table class="readings-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Level (cm)</th>
-            <th>Volume (L)</th>
-            <th>Temp (&deg;C)</th>
-            <th>Battery (V)</th>
-            <th>RSSI (dBm)</th>
-          </tr>
-        </thead>
-        <tbody id="unified-table-body"></tbody>
-      </table>
+    <div class="chart-header">
+      <div class="chart-header-actions">
+        <div class="range-pills" data-group="voltageRssi">
+          <button type="button" data-range="24h">24h</button>
+          <button type="button" data-range="7">7d</button>
+          <button type="button" data-range="30">30d</button>
+          <button type="button" data-range="60">60d</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+        <button type="button" class="table-toggle" data-toggle="voltageRssi">View as table</button>
+      </div>
     </div>
-  </div>
+    <div class="table-wrap" id="voltage-rssi-table-wrap" style="display: none;">
+      <div class="chart-card table-scroll">
+        <table class="readings-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Battery (V)</th>
+              <th>RSSI (dBm)</th>
+            </tr>
+          </thead>
+          <tbody id="voltage-rssi-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <footer>
     {% if admin %}Admin view &mdash; password protected.{% else %}Read-only public view.{% endif %}

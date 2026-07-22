@@ -202,16 +202,17 @@ body {
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px 28px;
-  margin-bottom: 12px;
-}
-
-.chart-header-group .table-toggle {
-  margin-left: auto;
 }
 
 .stat-card {
   display: flex;
   align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px 28px;
+  margin-bottom: 12px;
   gap: 24px;
   flex: 1;
 }
@@ -219,7 +220,15 @@ body {
 .stat-block {
   flex: 1;
   display: flex;
+  align-items: center;
   gap: 14px;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  gap: 4px 24px;
+  flex-wrap: wrap;
 }
 
 .stat-sep {
@@ -312,6 +321,38 @@ body {
   margin-bottom: 24px;
 }
 
+.chart-section-group + .chart-section-group {
+  margin-top: 48px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chart-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+
+.chart-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
 .table-toggle {
   font-size: 13px;
   color: var(--text-secondary);
@@ -321,8 +362,6 @@ body {
   cursor: pointer;
   padding: 0;
   white-space: nowrap;
-  align-self: center;
-  margin-top: 8px;
 }
 
 .chart-card {
@@ -804,10 +843,6 @@ footer {
     gap: 8px;
   }
 
-  .chart-header-group .table-toggle {
-    margin-left: 0;
-  }
-
   .stat-card {
     flex-direction: column;
     gap: 16px;
@@ -816,11 +851,6 @@ footer {
   .stat-sep {
     width: auto;
     height: 1px;
-  }
-
-  .table-toggle {
-    align-self: flex-start;
-    margin-top: 0;
   }
 
   .top-header {
@@ -832,14 +862,8 @@ footer {
     justify-content: space-between;
   }
 
-  .range-pills {
-    flex: 1;
-    justify-content: space-between;
-  }
-
   .range-pills button {
     padding: 6px 8px;
-    flex: 1;
   }
 
   .chart-canvas-wrap-group1 {
