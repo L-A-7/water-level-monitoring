@@ -253,6 +253,24 @@ function baseChartOptions() {
       vertLine: { color: axis, width: 1, style: LightweightCharts.LineStyle.Solid, labelVisible: true },
       horzLine: { color: axis, width: 1, style: LightweightCharts.LineStyle.Solid },
     },
+    // Time (horizontal) zoom/pan only. Vertical touch-drag is disabled so a
+    // vertical swipe over the chart falls through to normal page scrolling
+    // instead of panning the price scale. Price-axis drag-to-zoom is
+    // disabled too -- it let a stray touch lock the price scale into a
+    // manual range with no obvious way back (autoScale stays in control of
+    // the vertical scale, so it always fits the visible data).
+    handleScroll: {
+      mouseWheel: true,
+      pressedMouseMove: true,
+      horzTouchDrag: true,
+      vertTouchDrag: false,
+    },
+    handleScale: {
+      mouseWheel: true,
+      pinch: true,
+      axisPressedMouseMove: { time: true, price: false },
+      axisDoubleClickReset: { time: true, price: true },
+    },
   };
 }
 
