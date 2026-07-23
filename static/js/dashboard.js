@@ -19,6 +19,7 @@ const TANK_ENHANCED_DAYS = 60;
 const PANE_SEPARATOR = 6;
 
 const MOBILE_QUERY = window.matchMedia("(max-width: 640px)");
+const DARK_QUERY = window.matchMedia("(prefers-color-scheme: dark)");
 
 // Each group is one lightweight-charts instance with two stacked panes
 // sharing a time axis (and therefore zoom/pan + crosshair), but each pane
@@ -334,12 +335,35 @@ function applyPaneHeights() {
   }
 }
 
+// Chart colors are baked into the canvas at creation/update time (they're
+// not live CSS like the rest of the page), so a light<->dark switch that
+// happens without a full reload -- the OS flipping theme while the tab
+// stays open -- would otherwise leave the charts stuck on their original
+// colors. Re-read the CSS vars and push them back into the chart whenever
+// the media query flips.
+function applyTheme() {
+  for (const key of availableGroupKeys()) {
+    const def = GROUP_DEFS[key];
+    const group = state.groups[key];
+    group.chart.applyOptions(baseChartOptions());
+    for (const sdef of def.series) {
+      const entry = group.seriesEntries[sdef.key];
+      entry.series.applyOptions(
+        sdef.type === "area"
+          ? { lineColor: sdef.color(), topColor: sdef.areaTopColor(), bottomColor: sdef.areaBottomColor() }
+          : { color: sdef.color() },
+      );
+    }
+  }
+}
+
 function initGroupCharts() {
   for (const key of availableGroupKeys()) {
     state.groups[key] = createGroupChart(GROUP_DEFS[key]);
   }
   applyPaneHeights();
   MOBILE_QUERY.addEventListener("change", applyPaneHeights);
+  DARK_QUERY.addEventListener("change", applyTheme);
 }
 
 function updateGroupTooltips(def, container, chart, seriesEntries, param) {
