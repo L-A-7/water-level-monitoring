@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 import alerts
 import calibration
+import calibration_store
 import db
 import projection
 from auth import require_admin, require_device_token
@@ -20,6 +21,7 @@ SUMMARY_LOOKBACK_DAYS = max(projection.TANK_PROJECTION_WINDOW_DAYS, projection.B
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    calibration_store.init_calibration_file()
     yield
 
 
@@ -38,6 +40,11 @@ def _parse_iso(value: str) -> datetime:
 @app.get("/watertank", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
+
+
+@app.get("/watertank/about", response_class=HTMLResponse)
+def about(request: Request):
+    return templates.TemplateResponse(request, "about.html")
 
 
 @app.get("/watertank/admin", response_class=HTMLResponse, dependencies=[Depends(require_admin)])
@@ -92,7 +99,7 @@ def post_readings(token: str, body: DeviceRequest):
 
         desired_wakeup, desired_avg = db.get_desired_config(conn)
 
-        history = db.get_calibration_history(conn)
+        history = calibration_store.load_history()
         live_level_cm, _ = calibration.distance_to_level(history, live_distance_cm, live_reading_time)
         alerts.evaluate_alerts(conn, live_level_cm, live_battery_mv, live_distance_cm, live_reading_time.isoformat())
 
@@ -117,7 +124,7 @@ def get_readings(start: str | None = None, end: str | None = None):
         )
 
         rows = db.get_readings(conn, resolved_start.isoformat(), resolved_end.isoformat())
-        history = db.get_calibration_history(conn)
+        history = calibration_store.load_history()
 
     readings = []
     for reading_time_str, distance_cm, battery_mv, chip_temp_c, rssi in rows:
@@ -154,7 +161,7 @@ def get_summary():
         rows = db.get_readings(conn, window_start.isoformat(), now.isoformat())
         latest = db.get_latest_reading(conn)
         latest_request = db.get_latest_request(conn)
-        history = db.get_calibration_history(conn)
+        history = calibration_store.load_history()
         weak_signal_warning = alerts.is_weak_signal(conn, latest_request[1] if latest_request else None)
 
     level_points = []
@@ -197,6 +204,7 @@ def get_summary():
         "battery_critical_days": projection.days_until(battery_critical_at, now),
         "rssi": latest_request[1] if latest_request else None,
         "weak_signal_warning": weak_signal_warning,
+        "wakeup_period_min": latest_request[2] if latest_request else None,
     }
 
 
@@ -205,7 +213,7 @@ def get_admin_config():
     with db.get_connection() as conn:
         desired_wakeup, desired_avg = db.get_desired_config(conn)
         latest = db.get_latest_request(conn)
-        reference_offset_cm, chip_temp_offset_c = db.get_current_calibration(conn)
+    reference_offset_cm, chip_temp_offset_c = calibration_store.get_current_calibration()
 
     device_reported = None
     if latest:
@@ -229,7 +237,7 @@ def put_admin_config(body: AdminConfigIn):
     now = datetime.now(timezone.utc)
     with db.get_connection() as conn:
         db.set_desired_config(conn, body.wakeup_period_min, body.avg_sample_count)
-        db.set_calibration(conn, body.reference_offset_cm, body.chip_temp_offset_c, now.isoformat())
+    calibration_store.set_calibration(body.reference_offset_cm, body.chip_temp_offset_c, now.isoformat())
     return {
         "desired": {"wakeup_period_min": body.wakeup_period_min, "avg_sample_count": body.avg_sample_count},
         "calibration": {"reference_offset_cm": body.reference_offset_cm, "chip_temp_offset_c": body.chip_temp_offset_c},

@@ -2,15 +2,23 @@ from datetime import datetime
 
 from config import TANK_SURFACE_AREA_M2
 
-CalibrationHistory = list[tuple[datetime, "datetime | None", float, float]]
+CalibrationHistory = list[tuple[datetime, float, float]]
 
 
 def calibration_at(history: CalibrationHistory, timestamp: datetime) -> tuple[float, float]:
-    """(reference_offset_cm, chip_temp_offset_c) in effect at `timestamp`."""
-    for start, end, reference_offset_cm, chip_temp_offset_c in history:
-        if start <= timestamp and (end is None or timestamp < end):
-            return reference_offset_cm, chip_temp_offset_c
-    raise ValueError(f"no calibration defined for {timestamp}")
+    """(reference_offset_cm, chip_temp_offset_c) in effect at `timestamp`.
+
+    `history` must be sorted by start ascending (calibration_store.load_history()
+    guarantees this); each entry is in effect until the start of the next one.
+    """
+    applicable = None
+    for start, reference_offset_cm, chip_temp_offset_c in history:
+        if start > timestamp:
+            break
+        applicable = (reference_offset_cm, chip_temp_offset_c)
+    if applicable is None:
+        raise ValueError(f"no calibration defined for {timestamp}")
+    return applicable
 
 
 def distance_to_level(

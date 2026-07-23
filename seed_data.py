@@ -8,6 +8,7 @@ import math
 import random
 from datetime import datetime, timedelta, timezone
 
+import calibration_store
 import db
 from calibration import calibration_at
 
@@ -24,13 +25,13 @@ WATERING_START_PROBABILITY = 1 / 300
 
 def simulate() -> None:
     db.init_db()
+    calibration_store.init_calibration_file()
 
     n_points = DAYS * 24 * 60 // INTERVAL_MIN
     end_time = datetime.now(timezone.utc).replace(microsecond=0)
     start_time = end_time - timedelta(minutes=(n_points - 1) * INTERVAL_MIN)
 
-    with db.get_connection() as conn:
-        history = db.get_calibration_history(conn)
+    history = calibration_store.load_history()
     reference_offset_cm, _ = calibration_at(history, start_time)
     max_level_cm = reference_offset_cm
     level_cm = max_level_cm * 0.6
