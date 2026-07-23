@@ -35,8 +35,9 @@ const GROUP_DEFS = {
     tableColumns: [
       (r) => fmtTime(r.time),
       (r) => (r.level_cm !== null ? fmtNumber(r.level_cm, 1) : "no echo"),
-      (r) => (r.volume_liters !== null ? fmtNumber(r.volume_liters) : "—"),
       (r) => (r.chip_temp_c !== null ? fmtNumber(r.chip_temp_c, 1) : "—"),
+      (r) => (r.battery_mv !== null && r.battery_mv !== undefined ? fmtNumber(r.battery_mv / 1000, 2) : "—"),
+      (r) => (r.rssi !== null ? fmtNumber(r.rssi) : "—"),
     ],
     paneHeights: [405, 135],
     paneHeightsMobile: [315, 105],
@@ -72,9 +73,6 @@ const GROUP_DEFS = {
     cardId: "voltage-rssi-chart-card",
     emptyId: "voltage-rssi-empty-state",
     rangeCookie: "tank_range_voltage_rssi",
-    tableWrapId: "voltage-rssi-table-wrap",
-    tableBodyId: "voltage-rssi-table-body",
-    tableColumns: [(r) => fmtTime(r.time), (r) => fmtNumber(r.battery_mv / 1000, 2), (r) => (r.rssi !== null ? fmtNumber(r.rssi) : "—")],
     paneHeights: [240, 120],
     paneHeightsMobile: [187, 93],
     series: [
@@ -333,9 +331,12 @@ function updateGroupChart(key, readings, visibleRange) {
 }
 
 function renderSummary(data) {
-  document.getElementById("last-reading").textContent = data.last_reading_time
-    ? `Last reading: ${fmtTime(data.last_reading_time)}`
-    : "Last reading: —";
+  document.getElementById("stat-last-reading-time").textContent = data.last_reading_time ? fmtTime(data.last_reading_time) : "—";
+  const hasSamplePeriod = data.wakeup_period_min !== null && data.wakeup_period_min !== undefined;
+  document.getElementById("stat-sample-period-wrap").style.display = hasSamplePeriod ? "" : "none";
+  if (hasSamplePeriod) {
+    document.getElementById("stat-sample-period").textContent = data.wakeup_period_min;
+  }
 
   document.getElementById("stat-level").textContent = data.level_cm !== null ? fmtNumber(data.level_cm, 1) : "—";
   document.getElementById("stat-distance").textContent =
@@ -403,7 +404,7 @@ async function loadGroupRange(key, presetKey) {
   }
 
   updateGroupChart(key, data.readings, visibleRange);
-  renderGroupTable(key, data.readings);
+  if (def.tableWrapId) renderGroupTable(key, data.readings);
 }
 
 async function loadSummary() {
@@ -422,6 +423,7 @@ function initRangePills() {
 
 function initTableToggles() {
   for (const [key, def] of Object.entries(GROUP_DEFS)) {
+    if (!def.tableWrapId) continue;
     const toggle = document.querySelector(`.table-toggle[data-toggle="${key}"]`);
     const tableWrap = document.getElementById(def.tableWrapId);
     const chartCard = document.getElementById(def.cardId);

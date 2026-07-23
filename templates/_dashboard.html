@@ -1,8 +1,13 @@
 <div class="page">
   <header class="top-header">
     <div class="header-titles">
-      <div class="eyebrow">Real-time telemetry</div>
-      <h1>Hydro-Metric Analytics</h1>
+      <h1 class="page-title">
+        <svg class="page-title-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+        </svg>
+        Water Tank Level Monitor
+      </h1>
     </div>
     <div class="header-actions">
       {% if admin %}
@@ -22,7 +27,7 @@
     </div>
   </header>
 
-  <p class="last-reading" id="last-reading">Last reading: &mdash;</p>
+  <p class="last-reading">Last reading: <span class="last-reading-time" id="stat-last-reading-time">&mdash;</span><span class="last-reading-period" id="stat-sample-period-wrap"> &middot; sampled every <span class="last-reading-period-value"><span id="stat-sample-period"></span> min</span></span></p>
 
   <section class="chart-section chart-section-group">
     <div class="chart-title">Water Level &amp; MCU temperature</div>
@@ -68,6 +73,22 @@
       <div class="chart-canvas-wrap chart-canvas-wrap-group1" id="level-temp-chart"></div>
       <div class="empty-state" id="level-temp-empty-state" style="display: none;">No readings yet.</div>
     </div>
+    <div class="table-wrap" id="level-temp-table-wrap" style="display: none;">
+      <div class="chart-card table-scroll">
+        <table class="readings-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Level (cm)</th>
+              <th>Temp (&deg;C)</th>
+              <th>Battery (V)</th>
+              <th>RSSI (dBm)</th>
+            </tr>
+          </thead>
+          <tbody id="level-temp-table-body"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="chart-header">
       <div class="chart-header-actions">
         <div class="range-pills" data-group="levelTemp">
@@ -78,21 +99,6 @@
           <button type="button" data-range="all">All</button>
         </div>
         <button type="button" class="table-toggle" data-toggle="levelTemp">View as table</button>
-      </div>
-    </div>
-    <div class="table-wrap" id="level-temp-table-wrap" style="display: none;">
-      <div class="chart-card table-scroll">
-        <table class="readings-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Level (cm)</th>
-              <th>Volume (L)</th>
-              <th>Temp (&deg;C)</th>
-            </tr>
-          </thead>
-          <tbody id="level-temp-table-body"></tbody>
-        </table>
       </div>
     </div>
   </section>
@@ -148,27 +154,11 @@
           <button type="button" data-range="60">60d</button>
           <button type="button" data-range="all">All</button>
         </div>
-        <button type="button" class="table-toggle" data-toggle="voltageRssi">View as table</button>
-      </div>
-    </div>
-    <div class="table-wrap" id="voltage-rssi-table-wrap" style="display: none;">
-      <div class="chart-card table-scroll">
-        <table class="readings-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Battery (V)</th>
-              <th>RSSI (dBm)</th>
-            </tr>
-          </thead>
-          <tbody id="voltage-rssi-table-body"></tbody>
-        </table>
       </div>
     </div>
   </section>
 
   <footer>
-    {% if admin %}Admin view &mdash; password protected.{% else %}Read-only public view.{% endif %}
-    Data from a single HC-SR04 sensor and the sensor board's onboard chip thermometer, sampled roughly every 15 minutes.
+    How this works: <a href="/watertank/about">the technical details behind this dashboard</a>
   </footer>
 </div>
