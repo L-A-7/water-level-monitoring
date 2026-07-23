@@ -12,7 +12,7 @@ import calibration_store
 import db
 import projection
 from auth import require_admin, require_device_token
-from schemas import SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest
+from schemas import SENTINEL_CHIP_TEMP_FAIL, SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest
 
 DEFAULT_RANGE_DAYS = 60
 SUMMARY_LOOKBACK_DAYS = max(projection.TANK_PROJECTION_WINDOW_DAYS, projection.BATTERY_PROJECTION_WINDOW_DAYS)
@@ -78,6 +78,9 @@ def post_readings(token: str, body: DeviceRequest):
             offset_min = (n - 1 - seq) * body.config.wakeup_period_min
             reading_time = received_at - timedelta(minutes=offset_min)
             distance_cm = None if reading.distance_cm == SENTINEL_NO_ECHO else reading.distance_cm
+            # distance_std_cm shares distance_cm's sentinel (per device.md).
+            distance_std_cm = None if reading.distance_std_cm == SENTINEL_NO_ECHO else reading.distance_std_cm
+            chip_temp_c = None if reading.chip_temp_c == SENTINEL_CHIP_TEMP_FAIL else reading.chip_temp_c
 
             db.insert_reading(
                 conn,
@@ -86,7 +89,8 @@ def post_readings(token: str, body: DeviceRequest):
                 reading_time=reading_time.isoformat(),
                 distance_cm=distance_cm,
                 battery_mv=reading.battery_mv,
-                chip_temp_c=reading.chip_temp_c,
+                chip_temp_c=chip_temp_c,
+                distance_std_cm=distance_std_cm,
             )
 
             if seq == n - 1:
@@ -127,7 +131,7 @@ def get_readings(start: str | None = None, end: str | None = None):
         history = calibration_store.load_history()
 
     readings = []
-    for reading_time_str, distance_cm, battery_mv, chip_temp_c, rssi in rows:
+    for reading_time_str, distance_cm, battery_mv, chip_temp_c, distance_std_cm, rssi in rows:
         reading_time = datetime.fromisoformat(reading_time_str)
         level_cm, volume_liters = calibration.distance_to_level(history, distance_cm, reading_time)
         temp_c = calibration.temp_display(history, chip_temp_c, reading_time)
@@ -139,6 +143,7 @@ def get_readings(start: str | None = None, end: str | None = None):
                 "volume_liters": volume_liters,
                 "battery_mv": battery_mv,
                 "chip_temp_c": temp_c,
+                "distance_std_cm": distance_std_cm,
                 "rssi": rssi,
             }
         )
@@ -166,7 +171,7 @@ def get_summary():
 
     level_points = []
     battery_points = []
-    for reading_time_str, distance_cm, battery_mv, _chip_temp_c, _rssi in rows:
+    for reading_time_str, distance_cm, battery_mv, _chip_temp_c, _distance_std_cm, _rssi in rows:
         t = datetime.fromisoformat(reading_time_str)
         level_cm, _ = calibration.distance_to_level(history, distance_cm, t)
         if level_cm is not None:

@@ -102,7 +102,42 @@ const GROUP_DEFS = {
       },
     ],
   },
+  // Admin-only: its container only exists in _dashboard.html when {% if
+  // admin %} is true, so availableGroupKeys() filters this out on the
+  // public page automatically.
+  distanceStd: {
+    containerId: "distance-std-chart",
+    cardId: "distance-std-chart-card",
+    emptyId: "distance-std-empty-state",
+    rangeCookie: "tank_range_distance_std",
+    tableWrapId: "distance-std-table-wrap",
+    tableBodyId: "distance-std-table-body",
+    tableColumns: [
+      (r) => fmtTime(r.time),
+      (r) => (r.distance_std_cm !== null && r.distance_std_cm !== undefined ? fmtNumber(r.distance_std_cm, 2) : "—"),
+    ],
+    paneHeights: [220],
+    paneHeightsMobile: [170],
+    series: [
+      {
+        key: "distanceStd",
+        type: "area",
+        color: () => cssVar("--series-5"),
+        areaTopColor: () => cssVar("--series-5-area-top"),
+        areaBottomColor: () => cssVar("--series-5-area-bottom"),
+        priceFormat: { type: "price", precision: 2, minMove: 0.01 },
+        decimals: 2,
+        unit: "cm",
+        label: "Std dev",
+        extract: (r) => r.distance_std_cm,
+      },
+    ],
+  },
 };
+
+function availableGroupKeys() {
+  return Object.keys(GROUP_DEFS).filter((key) => document.getElementById(GROUP_DEFS[key].containerId));
+}
 
 const state = {
   groups: {},
@@ -273,7 +308,8 @@ function paneYOffset(def, paneIndex) {
 
 function applyPaneHeights() {
   const mobile = MOBILE_QUERY.matches;
-  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+  for (const key of availableGroupKeys()) {
+    const def = GROUP_DEFS[key];
     const group = state.groups[key];
     const heights = mobile ? def.paneHeightsMobile : def.paneHeights;
     heights.forEach((height, i) => group.chart.panes()[i].setHeight(height));
@@ -281,8 +317,8 @@ function applyPaneHeights() {
 }
 
 function initGroupCharts() {
-  for (const [key, def] of Object.entries(GROUP_DEFS)) {
-    state.groups[key] = createGroupChart(def);
+  for (const key of availableGroupKeys()) {
+    state.groups[key] = createGroupChart(GROUP_DEFS[key]);
   }
   applyPaneHeights();
   MOBILE_QUERY.addEventListener("change", applyPaneHeights);
@@ -414,7 +450,7 @@ async function loadSummary() {
 }
 
 function initRangePills() {
-  for (const key of Object.keys(GROUP_DEFS)) {
+  for (const key of availableGroupKeys()) {
     document.querySelectorAll(`.range-pills[data-group="${key}"] button[data-range]`).forEach((btn) => {
       btn.addEventListener("click", () => loadGroupRange(key, btn.dataset.range));
     });
@@ -422,7 +458,8 @@ function initRangePills() {
 }
 
 function initTableToggles() {
-  for (const [key, def] of Object.entries(GROUP_DEFS)) {
+  for (const key of availableGroupKeys()) {
+    const def = GROUP_DEFS[key];
     if (!def.tableWrapId) continue;
     const toggle = document.querySelector(`.table-toggle[data-toggle="${key}"]`);
     const tableWrap = document.getElementById(def.tableWrapId);
@@ -441,8 +478,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initGroupCharts();
   initRangePills();
   initTableToggles();
-  for (const [key, def] of Object.entries(GROUP_DEFS)) {
-    const savedRange = getCookie(def.rangeCookie) || DEFAULT_RANGE;
+  for (const key of availableGroupKeys()) {
+    const savedRange = getCookie(GROUP_DEFS[key].rangeCookie) || DEFAULT_RANGE;
     loadGroupRange(key, savedRange);
   }
   loadSummary();

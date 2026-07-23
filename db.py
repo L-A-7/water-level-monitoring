@@ -74,6 +74,10 @@ def init_db() -> None:
             conn.execute("ALTER TABLE readings ADD COLUMN chip_temp_c REAL")
         except sqlite3.OperationalError:
             pass  # column already exists
+        try:
+            conn.execute("ALTER TABLE readings ADD COLUMN distance_std_cm REAL")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 @contextmanager
@@ -102,11 +106,12 @@ def insert_reading(
     distance_cm: float | None,
     battery_mv: int,
     chip_temp_c: float | None = None,
+    distance_std_cm: float | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO readings (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c),
+        "INSERT INTO readings (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, distance_std_cm) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, distance_std_cm),
     )
 
 
@@ -123,7 +128,7 @@ def get_readings(conn, start_iso: str, end_iso: str):
     # flushed alongside it had no WiFi at capture time, per device.md.
     return conn.execute(
         """
-        SELECT r.reading_time, r.distance_cm, r.battery_mv, r.chip_temp_c,
+        SELECT r.reading_time, r.distance_cm, r.battery_mv, r.chip_temp_c, r.distance_std_cm,
                CASE WHEN r.seq = (SELECT MAX(seq) FROM readings WHERE request_id = r.request_id)
                     THEN q.rssi ELSE NULL END AS rssi
         FROM readings r

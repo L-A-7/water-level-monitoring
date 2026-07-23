@@ -3,6 +3,7 @@ import re
 from pydantic import BaseModel, Field, field_validator
 
 SENTINEL_NO_ECHO = -1.00
+SENTINEL_CHIP_TEMP_FAIL = -999.00
 
 # Lightweight sanity check, not full RFC 5322 validation -- avoids pulling in
 # the email-validator dependency for a single admin-entered address.
@@ -16,11 +17,15 @@ class ConfigIn(BaseModel):
 
 class ReadingIn(BaseModel):
     distance_cm: float
+    # RMS deviation of the samples averaged into distance_cm that wake.
+    # Optional: older firmware (before this field existed) sends nothing,
+    # which pydantic defaults to None here. Shares distance_cm's sentinel.
+    distance_std_cm: float | None = Field(default=None)
     battery_mv: int = Field(ge=0, le=5000)
     # Raw ESP32C6 internal chip temperature. Optional: older firmware
     # (before this field existed) sends no chip_temp_c at all, which
     # pydantic defaults to None here — treated as "unknown" downstream.
-    chip_temp_c: float | None = Field(default=None, ge=-40, le=125)
+    chip_temp_c: float | None = Field(default=None)
 
     @field_validator("distance_cm")
     @classmethod
@@ -29,6 +34,24 @@ class ReadingIn(BaseModel):
             return v
         if not (0 <= v <= 500):
             raise ValueError(f"distance_cm {v} out of plausible range (0-500, or sentinel -1.00)")
+        return v
+
+    @field_validator("distance_std_cm")
+    @classmethod
+    def validate_distance_std(cls, v: float | None) -> float | None:
+        if v is None or v == SENTINEL_NO_ECHO:
+            return v
+        if not (0 <= v <= 50):
+            raise ValueError(f"distance_std_cm {v} out of plausible range (0-50, or sentinel -1.00)")
+        return v
+
+    @field_validator("chip_temp_c")
+    @classmethod
+    def validate_chip_temp(cls, v: float | None) -> float | None:
+        if v is None or v == SENTINEL_CHIP_TEMP_FAIL:
+            return v
+        if not (-40 <= v <= 125):
+            raise ValueError(f"chip_temp_c {v} out of plausible range (-40 to 125, or sentinel -999.00)")
         return v
 
 

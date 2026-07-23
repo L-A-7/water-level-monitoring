@@ -26,6 +26,10 @@
   --series-4-wash: rgba(74, 58, 167, 0.10);
   --series-4-area-top: rgba(74, 58, 167, 0.3);
   --series-4-area-bottom: rgba(74, 58, 167, 0.0);
+  --series-5: #0f8a8a; /* distance std dev - teal */
+  --series-5-wash: rgba(15, 138, 138, 0.10);
+  --series-5-area-top: rgba(15, 138, 138, 0.3);
+  --series-5-area-bottom: rgba(15, 138, 138, 0.0);
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 4px 16px rgba(11, 11, 11, 0.06);
@@ -59,6 +63,10 @@
     --series-4-wash: rgba(144, 133, 233, 0.14);
     --series-4-area-top: rgba(144, 133, 233, 0.55);
     --series-4-area-bottom: rgba(144, 133, 233, 0.06);
+    --series-5: #2bb8b8;
+    --series-5-wash: rgba(43, 184, 184, 0.14);
+    --series-5-area-top: rgba(43, 184, 184, 0.55);
+    --series-5-area-bottom: rgba(43, 184, 184, 0.06);
     --status-good: #0ca30c;
     --status-warning: #fab219;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -91,6 +99,10 @@
   --series-4-wash: rgba(144, 133, 233, 0.14);
   --series-4-area-top: rgba(144, 133, 233, 0.55);
   --series-4-area-bottom: rgba(144, 133, 233, 0.06);
+  --series-5: #2bb8b8;
+  --series-5-wash: rgba(43, 184, 184, 0.14);
+  --series-5-area-top: rgba(43, 184, 184, 0.55);
+  --series-5-area-bottom: rgba(43, 184, 184, 0.06);
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -422,6 +434,10 @@ body {
 
 .chart-canvas-wrap-group2 {
   height: 362px;
+}
+
+.chart-canvas-wrap-group3 {
+  height: 220px;
 }
 
 .empty-state {
@@ -909,6 +925,10 @@ footer a:hover {
 
   .chart-canvas-wrap-group2 {
     height: 282px;
+  }
+
+  .chart-canvas-wrap-group3 {
+    height: 170px;
   }
 
   .axis-unit-pane1-group1 {

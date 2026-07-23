@@ -158,6 +158,42 @@
     </div>
   </section>
 
+  {% if admin %}
+  <section class="chart-section chart-section-group">
+    <div class="chart-title">Measurement noise (std dev)</div>
+    <div class="chart-card" id="distance-std-chart-card">
+      <div class="axis-unit axis-unit-pane0">cm</div>
+      <div class="chart-canvas-wrap chart-canvas-wrap-group3" id="distance-std-chart"></div>
+      <div class="empty-state" id="distance-std-empty-state" style="display: none;">No readings yet.</div>
+    </div>
+    <div class="table-wrap" id="distance-std-table-wrap" style="display: none;">
+      <div class="chart-card table-scroll">
+        <table class="readings-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Distance std dev (cm)</th>
+            </tr>
+          </thead>
+          <tbody id="distance-std-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="chart-header">
+      <div class="chart-header-actions">
+        <div class="range-pills" data-group="distanceStd">
+          <button type="button" data-range="24h">24h</button>
+          <button type="button" data-range="7">7d</button>
+          <button type="button" data-range="30">30d</button>
+          <button type="button" data-range="60">60d</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+        <button type="button" class="table-toggle" data-toggle="distanceStd">View as table</button>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <footer>
     How this works: <a href="/watertank/about">the technical details behind this dashboard</a>
   </footer>
