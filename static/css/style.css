@@ -124,19 +124,21 @@ body {
   margin-bottom: 20px;
 }
 
-.eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--series-1);
-  margin-bottom: 4px;
-}
-
 .top-header h1 {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 600;
   margin: 0;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--series-1);
+}
+
+.page-title-icon {
+  flex: none;
 }
 
 .header-actions {
@@ -193,6 +195,20 @@ body {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0 0 16px;
+}
+
+.last-reading-time {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.last-reading-period {
+  color: var(--text-muted);
+}
+
+.last-reading-period-value {
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 /* ---- chart stat headers ---- */
@@ -466,6 +482,15 @@ footer {
   color: var(--text-muted);
 }
 
+footer a {
+  color: var(--series-1);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
 /* ---- admin settings page ---- */
 
 .settings-page {
@@ -533,6 +558,17 @@ footer {
   font-weight: 600;
   color: var(--series-1);
   margin-bottom: 18px;
+}
+
+.about-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+}
+
+.about-placeholder {
+  opacity: 0.55;
 }
 
 .settings-field {
