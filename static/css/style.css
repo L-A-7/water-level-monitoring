@@ -381,6 +381,13 @@ body {
   flex: 1;
 }
 
+.chart-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .table-toggle {
   font-size: 13px;
   color: var(--text-secondary);

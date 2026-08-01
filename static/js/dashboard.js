@@ -2,12 +2,21 @@
 // what's initially shown — so zooming/panning out from e.g. 24h to a few
 // days doesn't need a fresh request. null means "fetch just this preset's
 // own window" (already the widest tier, or intentionally unbounded).
+// gridMinutes: the fixed time-grid step charted points get snapped onto (see
+// griddedSeries() below) -- lightweight-charts spaces points evenly by
+// index, not by their actual timestamp gap (github.com/tradingview/
+// lightweight-charts issues #457, #1426), so without this, irregular
+// sampling (a burst of 1min-apart backlog readings vs. a normal 15min gap)
+// renders as if evenly spaced in time, badly distorting the shape of the
+// curve. Finer for tighter ranges (needs to resolve short gaps without
+// collapsing readings together), coarser for wide ranges (keeps the point
+// count sane over weeks/months).
 const RANGE_PRESETS = [
-  { key: "24h", label: "24h", days: 1, bufferDays: 7 },
-  { key: "7", label: "7d", days: 7, bufferDays: 30 },
-  { key: "30", label: "30d", days: 30, bufferDays: 60 },
-  { key: "60", label: "60d", days: 60, bufferDays: null },
-  { key: "all", label: "All", days: null, bufferDays: null },
+  { key: "24h", label: "24h", days: 1, bufferDays: 7, gridMinutes: 1 },
+  { key: "7", label: "7d", days: 7, bufferDays: 30, gridMinutes: 15 },
+  { key: "30", label: "30d", days: 30, bufferDays: 60, gridMinutes: 60 },
+  { key: "60", label: "60d", days: 60, bufferDays: null, gridMinutes: 60 },
+  { key: "all", label: "All", days: null, bufferDays: null, gridMinutes: 60 },
 ];
 const DEFAULT_RANGE = "60";
 
@@ -33,6 +42,7 @@ const GROUP_DEFS = {
     rangeCookie: "tank_range_level_temp",
     tableWrapId: "level-temp-table-wrap",
     tableBodyId: "level-temp-table-body",
+    csvHeaders: ["Time", "Level (cm)", "Temp (°C)", "Battery (V)", "RSSI (dBm)"],
     tableColumns: [
       (r) => fmtTime(r.time),
       (r) => (r.level_cm !== null ? fmtNumber(r.level_cm, 1) : "no echo"),
@@ -113,6 +123,7 @@ const GROUP_DEFS = {
     rangeCookie: "tank_range_distance_std",
     tableWrapId: "distance-std-table-wrap",
     tableBodyId: "distance-std-table-body",
+    csvHeaders: ["Time", "Distance std dev (cm)"],
     tableColumns: [
       (r) => fmtTime(r.time),
       (r) => (r.distance_std_cm !== null && r.distance_std_cm !== undefined ? fmtNumber(r.distance_std_cm, 2) : "—"),
@@ -143,6 +154,7 @@ function availableGroupKeys() {
 const state = {
   groups: {},
   tableVisible: {},
+  readings: {},
 };
 
 function getCookie(name) {
@@ -200,6 +212,29 @@ function pointsFor(readings, extract) {
     points.push({ time: unixSeconds(r.time), value: v });
   }
   return points;
+}
+
+// Snaps points onto a fixed-step time grid and fills every empty tick in
+// between with a whitespace point (time only, no value) -- so consecutive
+// chart indices are always exactly gridMinutes apart in real time, and
+// gaps/bursts in the underlying sampling render proportionally instead of
+// getting stretched or squeezed to a uniform per-point width. Ticks that
+// land more than one raw point (a tighter burst than the chosen grid) keep
+// the most recent reading in that slot.
+function griddedSeries(points, gridMinutes) {
+  const stepSec = gridMinutes * 60;
+  const snapped = new Map();
+  for (const p of points) {
+    snapped.set(Math.round(p.time / stepSec) * stepSec, p.value);
+  }
+  if (snapped.size === 0) return [];
+
+  const ticks = [...snapped.keys()].sort((a, b) => a - b);
+  const result = [];
+  for (let t = ticks[0]; t <= ticks[ticks.length - 1]; t += stepSec) {
+    result.push(snapped.has(t) ? { time: t, value: snapped.get(t) } : { time: t });
+  }
+  return result;
 }
 
 function baseChartOptions() {
@@ -386,16 +421,16 @@ function updateGroupTooltips(def, container, chart, seriesEntries, param) {
   }
 }
 
-function updateGroupChart(key, readings, visibleRange) {
+function updateGroupChart(key, readings, visibleRange, gridMinutes) {
   const def = GROUP_DEFS[key];
   const group = state.groups[key];
   let anyPoints = false;
 
   for (const sdef of def.series) {
     const entry = group.seriesEntries[sdef.key];
-    const points = pointsFor(readings, sdef.extract);
+    const points = griddedSeries(pointsFor(readings, sdef.extract), gridMinutes);
     entry.points = points;
-    entry.pointsMap = new Map(points.map((p) => [p.time, p.value]));
+    entry.pointsMap = new Map(points.filter((p) => p.value !== undefined).map((p) => [p.time, p.value]));
     entry.series.setData(points);
     if (points.length) anyPoints = true;
   }
@@ -481,8 +516,33 @@ async function loadGroupRange(key, presetKey) {
     visibleRange = { from, to };
   }
 
-  updateGroupChart(key, data.readings, visibleRange);
+  updateGroupChart(key, data.readings, visibleRange, preset.gridMinutes);
+  state.readings[key] = data.readings;
   if (def.tableWrapId) renderGroupTable(key, data.readings);
+}
+
+// Same "—" / "no echo" placeholders as the on-page table (tableColumns),
+// just quoted properly for a CSV cell instead of rendered as text.
+function toCsv(headers, rows) {
+  const escapeCell = (value) => {
+    const s = String(value);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\r\n");
+}
+
+function downloadGroupCsv(key) {
+  const def = GROUP_DEFS[key];
+  const readings = state.readings[key] || [];
+  const rows = readings.map((r) => def.tableColumns.map((col) => col(r)));
+  const csv = toCsv(def.csvHeaders, rows);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${key}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 async function loadSummary() {
@@ -516,10 +576,20 @@ function initTableToggles() {
   }
 }
 
+function initCsvDownloads() {
+  for (const key of availableGroupKeys()) {
+    const def = GROUP_DEFS[key];
+    if (!def.csvHeaders) continue;
+    const button = document.querySelector(`[data-csv="${key}"]`);
+    button.addEventListener("click", () => downloadGroupCsv(key));
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initGroupCharts();
   initRangePills();
   initTableToggles();
+  initCsvDownloads();
   for (const key of availableGroupKeys()) {
     const savedRange = getCookie(GROUP_DEFS[key].rangeCookie) || DEFAULT_RANGE;
     loadGroupRange(key, savedRange);
