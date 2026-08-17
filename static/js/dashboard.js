@@ -237,6 +237,41 @@ function griddedSeries(points, gridMinutes) {
   return result;
 }
 
+// lightweight-charts formats its native time axis (tick labels + crosshair
+// date label) using UTC by default, regardless of viewer timezone -- while
+// every other timestamp in this dashboard (fmtTime, stat panels) uses
+// toLocaleString(), i.e. the browser's local time. Without these overrides
+// the chart axis reads a fixed UTC-offset number of hours off from
+// everything else on the page.
+function localCrosshairTimeFormatter(time) {
+  return new Date(time * 1000).toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function localTickMarkFormatter(time, tickMarkType, locale) {
+  const d = new Date(time * 1000);
+  const TickMarkType = LightweightCharts.TickMarkType;
+  switch (tickMarkType) {
+    case TickMarkType.Year:
+      return d.toLocaleDateString(locale, { year: "numeric" });
+    case TickMarkType.Month:
+      return d.toLocaleDateString(locale, { month: "short", year: "numeric" });
+    case TickMarkType.DayOfMonth:
+      return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+    case TickMarkType.Time:
+      return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+    case TickMarkType.TimeWithSeconds:
+      return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    default:
+      return d.toLocaleString(locale);
+  }
+}
+
 function baseChartOptions() {
   const gridline = cssVar("--gridline");
   const axis = cssVar("--axis");
@@ -271,10 +306,14 @@ function baseChartOptions() {
     leftPriceScale: {
       visible: false,
     },
+    localization: {
+      timeFormatter: localCrosshairTimeFormatter,
+    },
     timeScale: {
       borderColor: axis,
       timeVisible: true,
       secondsVisible: false,
+      tickMarkFormatter: localTickMarkFormatter,
       // lightweight-charts' fitContent() won't compress bars below the
       // *current* barSpacing, only ever widening it — so the initial value
       // has to already be small, or dense ranges (60d/All) get truncated
