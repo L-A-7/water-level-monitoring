@@ -58,7 +58,9 @@ class ReadingIn(BaseModel):
 class DeviceRequest(BaseModel):
     config: ConfigIn
     rssi: int = Field(ge=-120, le=0)
-    readings: list[ReadingIn] = Field(min_length=1, max_length=192)
+    # Device ring buffer holds up to 192 backlog entries + 1 current reading = 193.
+    # Headroom above that in case the firmware's buffer size changes slightly.
+    readings: list[ReadingIn] = Field(min_length=1, max_length=200)
 
 
 class AdminConfigIn(BaseModel):
