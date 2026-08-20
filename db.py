@@ -78,6 +78,10 @@ def init_db() -> None:
             conn.execute("ALTER TABLE readings ADD COLUMN distance_std_cm REAL")
         except sqlite3.OperationalError:
             pass  # column already exists
+        try:
+            conn.execute("ALTER TABLE readings ADD COLUMN raw_samples_json TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 @contextmanager
@@ -107,11 +111,12 @@ def insert_reading(
     battery_mv: int,
     chip_temp_c: float | None = None,
     distance_std_cm: float | None = None,
+    raw_samples_json: str | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO readings (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, distance_std_cm) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, distance_std_cm),
+        "INSERT INTO readings (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, "
+        "distance_std_cm, raw_samples_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (request_id, seq, reading_time, distance_cm, battery_mv, chip_temp_c, distance_std_cm, raw_samples_json),
     )
 
 
@@ -138,6 +143,34 @@ def get_readings(conn, start_iso: str, end_iso: str):
         """,
         (start_iso, end_iso),
     ).fetchall()
+
+
+# Admin-only diagnostics (device.md's TEMPORARY samples_cm field): browse
+# individual readings that carry a raw per-ping sample array. Most recent
+# first, capped since every request only ever attaches raw samples to its
+# one current-wake reading (never backlog), so this list grows slowly.
+RAW_SAMPLE_READINGS_LIMIT = 500
+
+
+def get_raw_sample_readings(conn):
+    return conn.execute(
+        """
+        SELECT id, reading_time, distance_cm, distance_std_cm, raw_samples_json
+        FROM readings
+        WHERE raw_samples_json IS NOT NULL
+        ORDER BY reading_time DESC
+        LIMIT ?
+        """,
+        (RAW_SAMPLE_READINGS_LIMIT,),
+    ).fetchall()
+
+
+def get_raw_samples_for_reading(conn, reading_id: int):
+    return conn.execute(
+        "SELECT id, reading_time, distance_cm, distance_std_cm, raw_samples_json "
+        "FROM readings WHERE id = ? AND raw_samples_json IS NOT NULL",
+        (reading_id,),
+    ).fetchone()
 
 
 def get_desired_config(conn) -> tuple[int | None, int | None]:

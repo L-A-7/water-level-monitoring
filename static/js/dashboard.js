@@ -624,6 +624,78 @@ function initCsvDownloads() {
   }
 }
 
+// Admin-only (see _dashboard.html's {% if admin %} block): raw HC-SR04
+// per-ping samples behind a filtered reading, per device.md's temporary
+// samples_cm diagnostic field. Only readings captured while
+// DEBUG_SEND_RAW_SAMPLES is flashed on the device carry these.
+async function loadRawSamplesList() {
+  const select = document.getElementById("raw-samples-select");
+  if (!select) return;
+
+  const res = await fetch("/watertank/api/admin/raw-samples");
+  const readings = await res.json();
+
+  const emptyState = document.getElementById("raw-samples-empty-state");
+  const controls = document.querySelector(".raw-samples-controls");
+  const tableWrap = document.getElementById("raw-samples-table-wrap");
+
+  if (!readings.length) {
+    emptyState.style.display = "block";
+    controls.style.display = "none";
+    tableWrap.style.display = "none";
+    return;
+  }
+  emptyState.style.display = "none";
+  controls.style.display = "flex";
+  tableWrap.style.display = "block";
+
+  select.innerHTML = "";
+  for (const r of readings) {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    const distanceLabel =
+      r.distance_cm !== null && r.distance_cm !== undefined ? `${fmtNumber(r.distance_cm, 2)} cm` : "no echo";
+    opt.textContent = `${fmtTime(r.time)} — ${distanceLabel} (${r.sample_count} samples)`;
+    select.appendChild(opt);
+  }
+
+  select.addEventListener("change", () => loadRawSamplesDetail(select.value));
+  await loadRawSamplesDetail(select.value);
+}
+
+async function loadRawSamplesDetail(readingId) {
+  const res = await fetch(`/watertank/api/admin/raw-samples/${readingId}`);
+  const data = await res.json();
+  state.rawSamples = data;
+
+  const tbody = document.getElementById("raw-samples-table-body");
+  tbody.innerHTML = "";
+  data.samples_cm.forEach((value, i) => {
+    const tr = document.createElement("tr");
+    const idxTd = document.createElement("td");
+    idxTd.textContent = i + 1;
+    const valTd = document.createElement("td");
+    valTd.textContent = value === -1 ? "no echo" : fmtNumber(value, 2);
+    tr.appendChild(idxTd);
+    tr.appendChild(valTd);
+    tbody.appendChild(tr);
+  });
+}
+
+function downloadRawSamplesCsv() {
+  const data = state.rawSamples;
+  if (!data) return;
+  const rows = data.samples_cm.map((value, i) => [i + 1, value === -1 ? "no echo" : value]);
+  const csv = toCsv(["#", "Raw distance (cm)"], rows);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `raw-samples-${data.id}-${new Date(data.time).toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initGroupCharts();
   initRangePills();
@@ -634,4 +706,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadGroupRange(key, savedRange);
   }
   loadSummary();
+  loadRawSamplesList();
+  document.getElementById("raw-samples-download")?.addEventListener("click", downloadRawSamplesCsv);
 });

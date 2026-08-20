@@ -654,6 +654,30 @@ footer a:hover {
   margin: 6px 0 0;
 }
 
+.raw-samples-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.raw-samples-controls label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.raw-samples-controls select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 100%;
+}
+
 .device-reported-card {
   padding: 16px 24px;
   font-size: 14px;

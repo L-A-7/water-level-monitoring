@@ -51,6 +51,31 @@ corresponding firmware ships, or every POST will 422 and — per the Retry
 semantics below — permanently wedge the device's backlog, since a rejected
 batch is never acknowledged/cleared.
 
+**TEMPORARY diagnostic field, now flashed to the real device (2026-08-20):
+`readings[].samples_cm`.** Gated behind `DEBUG_SEND_RAW_SAMPLES` in the
+firmware's `config.h` — currently `1`. The *last* entry in `readings` (the
+current wake, never a backlog entry) carries an extra array of the fully
+raw, pre-outlier-rejection HC-SR04 samples for that wake — e.g.
+`"samples_cm": [50.52, 50.48, -1.00, 50.55, ...]`, always exactly
+`avg_sample_count` values long: one entry per attempted ping, in order,
+nothing dropped. A ping whose echo timed out or was out of range shows up as
+`-1.00` (the same sentinel `distance_cm` uses) rather than being omitted —
+so a burst of failed pings is visible in the data, not silently invisible.
+This exists to let raw sample distributions be studied offline to design a
+better outlier filter — it's meant to be flipped off again afterward.
+
+The server now does more than tolerate this field: whenever `samples_cm` is
+present on a reading, the server re-runs outlier rejection itself (median +
+MAD-based robust sigma, replacing the on-device RMS-from-mean sigma this doc
+flags below as self-defeating) and that server-computed `distance_cm`/
+`distance_std_cm` — not the device's own on-device-filtered values in the
+same reading — becomes the value that's stored and charted. The device's
+own `distance_cm`/`distance_std_cm` are still sent and still used as-is for
+any reading without `samples_cm` (all backlog entries, and the current
+reading whenever `DEBUG_SEND_RAW_SAMPLES` is off). Raw samples are also
+persisted (not just logged) so they can be browsed per-reading from the
+admin page.
+
 | Field | Type | Notes |
 |---|---|---|
 | `config.wakeup_period_min` | uint, minutes | Device's *current* wake interval (echoes back what it's running, doesn't necessarily match what you last told it — see Response below). |
@@ -61,6 +86,56 @@ batch is never acknowledged/cleared.
 | `readings[].distance_std_cm` | float, 2 decimals | RMS deviation from the mean across the `avg_sample_count` HC-SR04 readings taken that wake, computed after the same median+3σ outlier rejection used for `distance_cm` (so it reflects the spread of the samples actually averaged in, not the raw noise floor). Sensor's physical accuracy is ~0.3cm, so values well below that reflect measurement consistency, not calibrated precision. **Shares `distance_cm`'s sentinel: `-1.00` whenever `distance_cm` is `-1.00`** (no echo / implausible range that wake) — treat both fields as sentinel together. |
 | `readings[].battery_mv` | int | Battery voltage in mV (~3000-4200 for the single-cell LiPo in use). |
 | `readings[].chip_temp_c` | float, 2 decimals | ESP32-C6's internal **die/package temperature, not ambient** — self-heating from WiFi TX and CPU load typically reads several °C above actual ambient air/water temperature. Diagnostic/device-health signal only; not a substitute for a real ambient sensor. **Sentinel value `-999.00` means the on-chip sensor read failed** that wake (out of its configured -10..80°C range, or a driver error) — filter/flag these like the distance sentinel. |
+| `readings[].samples_cm` | array of float, 2 decimals | **TEMPORARY, diagnostic-only** (see note above) — only present on the current-wake reading, never on backlog entries, and only when the firmware's `DEBUG_SEND_RAW_SAMPLES` is enabled. Fully raw per-ping distances, before outlier rejection/averaging, one entry per attempted ping (`avg_sample_count` long) with no drops — failed pings (no echo / out of range) appear as `-1.00`, the same sentinel `distance_cm` uses. |
+
+### On-device outlier filter (median+3σ)
+
+This is the filter that turns `samples_cm` (raw, one entry per attempted
+ping) into `distance_cm`/`distance_std_cm` (one filtered value per wake). It
+runs on-device, once per wake, over that wake's `avg_sample_count` pings —
+`config.avg_sample_count`/`n` below is that same value. Documented here
+because **it's the baseline the raw `samples_cm` data needs to be compared
+against**: it's still letting some false points through in the field, which
+is the whole reason `samples_cm` exists — to study *why*, from the actual
+raw distributions, and design something that catches what this doesn't.
+Exact algorithm (`hcsr04_filter_samples()` in the firmware):
+
+1. Take the `n` raw per-ping distances (echo-timeout/out-of-range pings are
+   never handed to this step at all — they're excluded upstream, not by this
+   filter; see the `samples_cm` sentinel note above for how those show up in
+   the raw array).
+2. `median` = the middle element of the sorted samples (`sorted[n/2]`; for
+   even `n` this is the upper of the two middle values, not their average).
+3. `mean` = arithmetic mean of **all** `n` samples (not median-centered, no
+   rejection applied yet).
+4. `sigma` = RMS deviation from that `mean`, across all `n` samples:
+   `sqrt(sum((x_i - mean)^2) / n)`.
+5. Keep every sample within `3 * sigma` of the `median`; reject the rest.
+6. `distance_cm` = mean of the kept samples (falls back to `median` if
+   somehow none survive).
+7. `distance_std_cm` = RMS deviation of the kept samples from `distance_cm`
+   (0 if fewer than 2 survive).
+
+**Why this still lets false points through** — the load-bearing weakness is
+step 4: `sigma` is computed from the *mean of all samples, including the
+outliers step 5 is about to screen for*. Mean and this kind of sigma are not
+robust statistics — a couple of far-off echoes (e.g. a multipath/second
+reflection off the tank wall, foam, or a ripple) drag the mean toward them
+and, worse, inflate `sigma` right along with it. Since the acceptance window
+is `3 * sigma` wide, an inflated `sigma` can be enough to let those same
+outliers (or others) fall inside the window and survive — the points most
+responsible for corrupting the threshold are exactly the ones the threshold
+was supposed to catch. This gets worse the more outliers cluster together
+in a single wake (two similar bad echoes reinforce each other) and the
+smaller `n` is (at the field default `n=30`, one or two bad points have
+outsized leverage on `sigma`). A scale estimate that isn't dragged around by
+the outliers it's measuring — e.g. MAD, median absolute deviation from the
+median, instead of RMS-from-mean — doesn't have this self-defeating
+property, and is one direction worth evaluating against the raw
+`samples_cm` data. Also note the sensor's stated physical accuracy is
+~0.3cm (see `distance_std_cm` above): a low `distance_std_cm` on a given
+wake means the surviving samples agree with each other, not that they agree
+with reality — it's not proof an outlier didn't survive rejection.
 
 ### Timestamp reconstruction
 
@@ -100,7 +175,7 @@ feedback, only a device-side log line):
 | Field | Range | Out-of-range behavior |
 |---|---|---|
 | `wakeup_period_min` | 1 – 1440 (24h) | Ignored, device keeps its current value |
-| `avg_sample_count` | 1 – 1000 | Ignored, device keeps its current value (in practice the device also hard-caps actual sampling at 100 internally regardless of what's configured, for battery/timing reasons) |
+| `avg_sample_count` | 1 – 100 | Ignored, device keeps its current value (matches the device's actual hard sampling cap, for battery/timing reasons) |
 
 Each field is validated and applied independently — a valid `wakeup_period_min`
 with an invalid `avg_sample_count` still applies the `wakeup_period_min` change.

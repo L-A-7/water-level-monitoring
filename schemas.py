@@ -26,6 +26,13 @@ class ReadingIn(BaseModel):
     # (before this field existed) sends no chip_temp_c at all, which
     # pydantic defaults to None here — treated as "unknown" downstream.
     chip_temp_c: float | None = Field(default=None)
+    # TEMPORARY diagnostic field (device.md) -- fully raw, pre-outlier-
+    # -rejection per-ping distances for this wake, only ever present on the
+    # current (last) reading. Not range-validated per-element: the whole
+    # point is to see the raw distribution, outliers included. Bounded to
+    # HCSR04_MAX_SAMPLES (100) with generous headroom, matching ConfigIn's
+    # avg_sample_count validation ceiling.
+    samples_cm: list[float] | None = Field(default=None, max_length=1000)
 
     @field_validator("distance_cm")
     @classmethod

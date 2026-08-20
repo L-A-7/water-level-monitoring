@@ -1,7 +1,8 @@
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,7 @@ import calibration
 import calibration_store
 import db
 import projection
+import sample_filter
 from auth import require_admin, require_device_token
 from schemas import SENTINEL_CHIP_TEMP_FAIL, SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest
 
@@ -82,6 +84,16 @@ def post_readings(token: str, body: DeviceRequest):
             distance_std_cm = None if reading.distance_std_cm == SENTINEL_NO_ECHO else reading.distance_std_cm
             chip_temp_c = None if reading.chip_temp_c == SENTINEL_CHIP_TEMP_FAIL else reading.chip_temp_c
 
+            raw_samples_json = None
+            if reading.samples_cm:
+                raw_samples_json = json.dumps(reading.samples_cm)
+                # Raw samples present -> recompute distance_cm/distance_std_cm
+                # server-side (MAD-based filter, see sample_filter.py) instead
+                # of trusting the device's own on-device-filtered values.
+                filtered_distance_cm, filtered_distance_std_cm = sample_filter.filter_samples(reading.samples_cm)
+                distance_cm = None if filtered_distance_cm == SENTINEL_NO_ECHO else filtered_distance_cm
+                distance_std_cm = None if filtered_distance_std_cm == SENTINEL_NO_ECHO else filtered_distance_std_cm
+
             db.insert_reading(
                 conn,
                 request_id=request_id,
@@ -91,6 +103,7 @@ def post_readings(token: str, body: DeviceRequest):
                 battery_mv=reading.battery_mv,
                 chip_temp_c=chip_temp_c,
                 distance_std_cm=distance_std_cm,
+                raw_samples_json=raw_samples_json,
             )
 
             if seq == n - 1:
@@ -246,6 +259,38 @@ def put_admin_config(body: AdminConfigIn):
     return {
         "desired": {"wakeup_period_min": body.wakeup_period_min, "avg_sample_count": body.avg_sample_count},
         "calibration": {"reference_offset_cm": body.reference_offset_cm, "chip_temp_offset_c": body.chip_temp_offset_c},
+    }
+
+
+@app.get("/watertank/api/admin/raw-samples", dependencies=[Depends(require_admin)])
+def get_admin_raw_samples_list():
+    with db.get_connection() as conn:
+        rows = db.get_raw_sample_readings(conn)
+    return [
+        {
+            "id": reading_id,
+            "time": reading_time,
+            "distance_cm": distance_cm,
+            "distance_std_cm": distance_std_cm,
+            "sample_count": len(json.loads(raw_samples_json)),
+        }
+        for reading_id, reading_time, distance_cm, distance_std_cm, raw_samples_json in rows
+    ]
+
+
+@app.get("/watertank/api/admin/raw-samples/{reading_id}", dependencies=[Depends(require_admin)])
+def get_admin_raw_samples_detail(reading_id: int):
+    with db.get_connection() as conn:
+        row = db.get_raw_samples_for_reading(conn, reading_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No raw samples for this reading")
+    reading_id, reading_time, distance_cm, distance_std_cm, raw_samples_json = row
+    return {
+        "id": reading_id,
+        "time": reading_time,
+        "distance_cm": distance_cm,
+        "distance_std_cm": distance_std_cm,
+        "samples_cm": json.loads(raw_samples_json),
     }
 
 
