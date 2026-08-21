@@ -655,7 +655,9 @@ async function loadRawSamplesList() {
     opt.value = r.id;
     const distanceLabel =
       r.distance_cm !== null && r.distance_cm !== undefined ? `${fmtNumber(r.distance_cm, 2)} cm` : "no echo";
-    opt.textContent = `${fmtTime(r.time)} — ${distanceLabel} (${r.sample_count} samples)`;
+    const stdLabel =
+      r.distance_std_cm !== null && r.distance_std_cm !== undefined ? `σ ${fmtNumber(r.distance_std_cm, 2)} cm` : "σ —";
+    opt.textContent = `${fmtTime(r.time)} — ${distanceLabel} (${stdLabel})`;
     select.appendChild(opt);
   }
 
