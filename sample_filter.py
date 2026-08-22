@@ -12,6 +12,19 @@ which isn't dragged around by the outliers it's measuring.
 Only used when a reading carries raw samples_cm (device.md's TEMPORARY
 DEBUG_SEND_RAW_SAMPLES field) -- readings without it keep the device's own
 on-device-filtered distance_cm/distance_std_cm untouched.
+
+Median+MAD still assumes the "good" samples are the majority. That can be
+false during rain: splashing can produce enough scattered near-sensor echoes
+that they outnumber the true-surface pings, which are still tightly
+clustered but are no longer the majority -- median+MAD then converges on
+the wrong (scattered) side and reports it with a deceptively small-looking
+window, except the resulting distance_std_cm comes out huge (tens of cm,
+since it's the spread of a essentially-random scatter, not a real cluster).
+Rather than trying to out-smart that with a cleverer clustering heuristic
+(fragile: a small seed cluster can itself land on a coincidental pair from
+the scattered side), REJECT_STD_THRESHOLD_CM below treats a high resulting
+std as "this reading can't be trusted" and discards it (sentinel) instead of
+returning a value that might be badly wrong -- same as a real no-echo ping.
 """
 
 from schemas import SENTINEL_NO_ECHO
@@ -22,11 +35,18 @@ from schemas import SENTINEL_NO_ECHO
 MAD_TO_SIGMA = 1.4826
 OUTLIER_SIGMA_MULT = 3.0
 
+# Sensor's stated physical accuracy is ~0.3cm (device.md); a calm-water batch
+# typically comes out well under 0.1cm. A post-filter std above this is a
+# sign the filter converged on a scattered/contaminated group rather than a
+# real cluster -- discard the reading rather than trust the number.
+REJECT_STD_THRESHOLD_CM = 1.0
+
 
 def filter_samples(samples_cm: list[float]) -> tuple[float, float]:
     """Raw per-ping distances (may include the -1.00 no-echo sentinel) ->
-    (distance_cm, distance_std_cm), both SENTINEL_NO_ECHO if no ping in the
-    batch got a valid echo.
+    (distance_cm, distance_std_cm). Both are SENTINEL_NO_ECHO if no ping in
+    the batch got a valid echo, or if the filtered result's std dev exceeds
+    REJECT_STD_THRESHOLD_CM (the batch is judged untrustworthy either way).
     """
     valid = [s for s in samples_cm if s != SENTINEL_NO_ECHO]
     if not valid:
@@ -55,5 +75,8 @@ def filter_samples(samples_cm: list[float]) -> tuple[float, float]:
         distance_std_cm = (sum((x - distance_cm) ** 2 for x in kept) / len(kept)) ** 0.5
     else:
         distance_std_cm = 0.0
+
+    if distance_std_cm > REJECT_STD_THRESHOLD_CM:
+        return SENTINEL_NO_ECHO, SENTINEL_NO_ECHO
 
     return round(distance_cm, 2), round(distance_std_cm, 2)

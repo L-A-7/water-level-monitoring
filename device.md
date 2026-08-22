@@ -76,6 +76,24 @@ reading whenever `DEBUG_SEND_RAW_SAMPLES` is off). Raw samples are also
 persisted (not just logged) so they can be browsed per-reading from the
 admin page.
 
+**Rain can beat the "majority of samples are good" assumption.** Median+MAD
+rejection (like the device's own median+3sigma) assumes the true-surface
+pings are the majority of the batch. Observed in the field: rain splashing
+against the tank surface can produce enough scattered near-sensor echoes
+that they outnumber the true-surface pings within a single wake's batch,
+even though the true-surface pings are still tightly clustered among
+themselves. Median+MAD then converges on the scattered side instead, but
+gives itself away by reporting a `distance_std_cm` in the tens of cm (the
+spread of a scatter, not a real cluster) rather than the usual sub-mm-to-a-
+few-mm figure. Rather than a cleverer clustering heuristic (any small "seed
+cluster" approach risks landing on a coincidental close pair from the
+scattered side instead of the real one), the server treats a post-filter
+`distance_std_cm` above 1cm as untrustworthy and discards that reading's
+`distance_cm`/`distance_std_cm` entirely (stored as the same sentinel as a
+real no-echo ping) rather than risk storing/charting a badly wrong value.
+The raw `samples_cm` are still persisted and browsable either way, so
+nothing about the event is actually lost.
+
 | Field | Type | Notes |
 |---|---|---|
 | `config.wakeup_period_min` | uint, minutes | Device's *current* wake interval (echoes back what it's running, doesn't necessarily match what you last told it — see Response below). |
