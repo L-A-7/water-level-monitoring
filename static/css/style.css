@@ -447,6 +447,37 @@ body {
   height: 220px;
 }
 
+.chart-canvas-wrap-histogram {
+  height: 200px;
+}
+
+.histogram-bar {
+  fill: var(--series-5);
+}
+
+.histogram-bar:hover {
+  fill: var(--series-1);
+}
+
+.histogram-gridline {
+  stroke: var(--gridline);
+  stroke-width: 1;
+}
+
+.histogram-baseline {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+.histogram-tick-text {
+  fill: var(--text-muted);
+  font-size: 9px;
+}
+
+.histogram-hover-target {
+  fill: transparent;
+}
+
 .empty-state {
   position: absolute;
   inset: 0;

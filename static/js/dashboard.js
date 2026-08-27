@@ -637,16 +637,19 @@ async function loadRawSamplesList() {
 
   const emptyState = document.getElementById("raw-samples-empty-state");
   const controls = document.querySelector(".raw-samples-controls");
+  const histogramCard = document.getElementById("raw-samples-histogram-card");
   const tableWrap = document.getElementById("raw-samples-table-wrap");
 
   if (!readings.length) {
     emptyState.style.display = "block";
     controls.style.display = "none";
+    histogramCard.style.display = "none";
     tableWrap.style.display = "none";
     return;
   }
   emptyState.style.display = "none";
   controls.style.display = "flex";
+  histogramCard.style.display = "block";
   tableWrap.style.display = "block";
 
   select.innerHTML = "";
@@ -665,10 +668,142 @@ async function loadRawSamplesList() {
   await loadRawSamplesDetail(select.value);
 }
 
+// Fixed-width histogram, per-request: 0.1cm bins. Values are worked in
+// integer tenths-of-a-cm (Math.round(v / HISTOGRAM_BIN_CM)) rather than
+// float cm, so bin edges never drift from floating-point rounding.
+const HISTOGRAM_BIN_CM = 0.1;
+const HISTOGRAM_PAD = { left: 6, right: 6, top: 10, bottom: 22 };
+
+function buildHistogramBins(samplesCm) {
+  const valid = samplesCm.filter((v) => v !== -1);
+  const noEchoCount = samplesCm.length - valid.length;
+  if (!valid.length) return { bins: null, noEchoCount };
+
+  const scaled = valid.map((v) => Math.round(v / HISTOGRAM_BIN_CM));
+  const minScaled = Math.min(...scaled);
+  const maxScaled = Math.max(...scaled);
+  const numBins = maxScaled - minScaled + 1;
+  const counts = new Array(numBins).fill(0);
+  for (const v of scaled) counts[v - minScaled]++;
+
+  return { bins: { minScaled, numBins, counts, maxCount: Math.max(...counts) }, noEchoCount };
+}
+
+// Rect path with only the top two corners rounded (bars sit flush on the
+// baseline), clamped so the radius never exceeds half the bar's own size.
+function roundedTopRectPath(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h));
+  return (
+    `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} ` +
+    `L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`
+  );
+}
+
+function renderHistogram(samplesCm) {
+  const container = document.getElementById("raw-samples-histogram");
+  const emptyState = document.getElementById("raw-samples-histogram-empty-state");
+  const note = document.getElementById("raw-samples-histogram-note");
+  if (!container) return;
+
+  state.histogramSamples = samplesCm;
+
+  const { bins, noEchoCount } = buildHistogramBins(samplesCm);
+  note.textContent =
+    noEchoCount > 0 ? `${noEchoCount} no-echo ping${noEchoCount === 1 ? "" : "s"} excluded from the distribution.` : "";
+
+  if (!bins) {
+    container.innerHTML = "";
+    emptyState.style.display = "flex";
+    return;
+  }
+  emptyState.style.display = "none";
+
+  // Real pixel dimensions (not a fixed logical viewBox) so text/strokes
+  // render at true 1:1 scale regardless of the container's aspect ratio.
+  const rect = container.getBoundingClientRect();
+  const W = Math.max(Math.round(rect.width), 100);
+  const H = Math.max(Math.round(rect.height), 100);
+
+  const { minScaled, numBins, counts, maxCount } = bins;
+  const plotW = W - HISTOGRAM_PAD.left - HISTOGRAM_PAD.right;
+  const plotH = H - HISTOGRAM_PAD.top - HISTOGRAM_PAD.bottom;
+  const baselineY = HISTOGRAM_PAD.top + plotH;
+  const slotWidth = plotW / numBins;
+
+  const gridlines = [0.25, 0.5, 0.75]
+    .map((frac) => {
+      const y = baselineY - frac * plotH;
+      return `<line class="histogram-gridline" x1="${HISTOGRAM_PAD.left}" y1="${y}" x2="${HISTOGRAM_PAD.left + plotW}" y2="${y}" />`;
+    })
+    .join("");
+
+  let bars = "";
+  for (let i = 0; i < numBins; i++) {
+    const count = counts[i];
+    if (!count) continue;
+    const x = HISTOGRAM_PAD.left + i * slotWidth;
+    const barWidth = Math.max(slotWidth * 0.82, 0.6);
+    const barHeight = (count / maxCount) * plotH;
+    const y = baselineY - barHeight;
+    const r = Math.min(3, barWidth / 2, barHeight);
+    bars += `<path class="histogram-bar" d="${roundedTopRectPath(x, y, barWidth, barHeight, r)}" />`;
+  }
+
+  const tickStep = Math.max(1, Math.round(numBins / 6));
+  let ticks = "";
+  for (let i = 0; i < numBins; i += tickStep) {
+    const x = HISTOGRAM_PAD.left + (i + 0.5) * slotWidth;
+    const value = ((minScaled + i) * HISTOGRAM_BIN_CM).toFixed(1);
+    ticks += `<text class="histogram-tick-text" x="${x}" y="${H - 6}" text-anchor="middle">${value}</text>`;
+  }
+  if ((numBins - 1) % tickStep !== 0) {
+    const x = HISTOGRAM_PAD.left + (numBins - 0.5) * slotWidth;
+    const value = ((minScaled + numBins - 1) * HISTOGRAM_BIN_CM).toFixed(1);
+    ticks += `<text class="histogram-tick-text" x="${x}" y="${H - 6}" text-anchor="middle">${value}</text>`;
+  }
+
+  container.innerHTML =
+    `<svg width="${W}" height="${H}">` +
+    gridlines +
+    bars +
+    `<line class="histogram-baseline" x1="${HISTOGRAM_PAD.left}" y1="${baselineY}" x2="${HISTOGRAM_PAD.left + plotW}" y2="${baselineY}" />` +
+    ticks +
+    `<rect class="histogram-hover-target" x="${HISTOGRAM_PAD.left}" y="${HISTOGRAM_PAD.top}" width="${plotW}" height="${plotH}" />` +
+    `</svg>`;
+
+  let tooltip = container.parentElement.querySelector(".chart-tooltip");
+  if (!tooltip) {
+    tooltip = document.createElement("div");
+    tooltip.className = "chart-tooltip";
+    container.parentElement.appendChild(tooltip);
+  }
+
+  const svgEl = container.querySelector("svg");
+  const hoverTarget = container.querySelector(".histogram-hover-target");
+
+  hoverTarget.addEventListener("mousemove", (evt) => {
+    const svgRect = svgEl.getBoundingClientRect();
+    const mouseX = evt.clientX - svgRect.left;
+    const binIndex = Math.min(numBins - 1, Math.max(0, Math.floor((mouseX - HISTOGRAM_PAD.left) / slotWidth)));
+    const value = ((minScaled + binIndex) * HISTOGRAM_BIN_CM).toFixed(1);
+    const count = counts[binIndex];
+    tooltip.innerHTML = `<strong>${value} cm</strong>: ${count} sample${count === 1 ? "" : "s"}`;
+    tooltip.style.display = "block";
+    const maxLeft = Math.max(container.clientWidth - tooltip.offsetWidth - 4, 4);
+    tooltip.style.left = `${Math.min(Math.max(mouseX + 12, 4), maxLeft)}px`;
+    tooltip.style.top = "4px";
+  });
+  hoverTarget.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+  });
+}
+
 async function loadRawSamplesDetail(readingId) {
   const res = await fetch(`/watertank/api/admin/raw-samples/${readingId}`);
   const data = await res.json();
   state.rawSamples = data;
+
+  renderHistogram(data.samples_cm);
 
   const tbody = document.getElementById("raw-samples-table-body");
   tbody.innerHTML = "";
@@ -710,4 +845,13 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSummary();
   loadRawSamplesList();
   document.getElementById("raw-samples-download")?.addEventListener("click", downloadRawSamplesCsv);
+
+  // Re-render at real pixel dimensions on resize (the SVG is built to fixed
+  // pixel coordinates, not a scaling viewBox, so it doesn't resize itself).
+  let histogramResizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (!state.histogramSamples) return;
+    clearTimeout(histogramResizeTimer);
+    histogramResizeTimer = setTimeout(() => renderHistogram(state.histogramSamples), 150);
+  });
 });

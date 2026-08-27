@@ -212,6 +212,12 @@
       <select id="raw-samples-select"></select>
       <button type="button" class="table-toggle" id="raw-samples-download">Download CSV</button>
     </div>
+    <div class="chart-card" id="raw-samples-histogram-card">
+      <div class="axis-unit axis-unit-pane0">count</div>
+      <div class="chart-canvas-wrap chart-canvas-wrap-histogram" id="raw-samples-histogram"></div>
+      <div class="empty-state" id="raw-samples-histogram-empty-state" style="display: none;">No valid samples to plot.</div>
+    </div>
+    <p class="settings-hint" id="raw-samples-histogram-note"></p>
     <div class="table-wrap" id="raw-samples-table-wrap">
       <div class="chart-card table-scroll">
         <table class="readings-table">
