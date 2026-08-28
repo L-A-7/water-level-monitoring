@@ -18,7 +18,7 @@ const RANGE_PRESETS = [
   { key: "60", label: "60d", days: 60, bufferDays: null, gridMinutes: 60 },
   { key: "all", label: "All", days: null, bufferDays: null, gridMinutes: 60 },
 ];
-const DEFAULT_RANGE = "60";
+const DEFAULT_RANGE = "7";
 
 const TANK_ENHANCED_DAYS = 60;
 

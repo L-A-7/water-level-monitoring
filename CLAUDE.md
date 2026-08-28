@@ -17,7 +17,7 @@ for what the device sends and expects back.
 - The server will be hosted on a VPS
 - there should be one page with public access, read only
 - And one page that is configurable and can send parameters to the device by Optionally responding with config updates (`wakeup_period_min`, `avg_sample_count`) to let the device be retuned without reflashing. Bonus, not required for v1.
-- Main goal:display the time variation of the water level to the user. The time scale should be adjustable and by default display the last 2 month (or the full time variation if less than 2 month).
+- Main goal:display the time variation of the water level to the user. The time scale should be adjustable and by default display the last 7 days (or the full time variation if less than 7 days).
 - Display parameters chosen by the user can be saved in a cookie for next time access (no need of RGPD acceptance since this is not for tracking)
 - Since this watertank get the water from the roof, its level rise when it rains, proportionally to the rain quantity. Later on, I want to correlate these data to meteo data publicly available: on the curve a local event should be detected when the water level rise, a local indicator display the quantity of rain (in mm), and correlate to public meteo data (we use this as a local meteo station regarding rain level. This functionnality will be desactivated when the tank is full (no more linearity between rain quantity and level))
 - Similarly the level mainly goes down when we water the garden, these event should be detected also and tagged on the curve.

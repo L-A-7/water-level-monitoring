@@ -16,7 +16,7 @@ import sample_filter
 from auth import require_admin, require_device_token
 from schemas import SENTINEL_CHIP_TEMP_FAIL, SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest
 
-DEFAULT_RANGE_DAYS = 60
+DEFAULT_RANGE_DAYS = 7
 SUMMARY_LOOKBACK_DAYS = max(projection.TANK_PROJECTION_WINDOW_DAYS, projection.BATTERY_PROJECTION_WINDOW_DAYS)
 
 
