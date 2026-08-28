@@ -65,34 +65,41 @@ This exists to let raw sample distributions be studied offline to design a
 better outlier filter — it's meant to be flipped off again afterward.
 
 The server now does more than tolerate this field: whenever `samples_cm` is
-present on a reading, the server re-runs outlier rejection itself (median +
-MAD-based robust sigma, replacing the on-device RMS-from-mean sigma this doc
-flags below as self-defeating) and that server-computed `distance_cm`/
-`distance_std_cm` — not the device's own on-device-filtered values in the
-same reading — becomes the value that's stored and charted. The device's
-own `distance_cm`/`distance_std_cm` are still sent and still used as-is for
-any reading without `samples_cm` (all backlog entries, and the current
-reading whenever `DEBUG_SEND_RAW_SAMPLES` is off). Raw samples are also
-persisted (not just logged) so they can be browsed per-reading from the
-admin page.
+present on a reading, the server re-runs outlier rejection itself and that
+server-computed `distance_cm`/`distance_std_cm` — not the device's own
+on-device-filtered values in the same reading — becomes the value that's
+stored and charted. The device's own `distance_cm`/`distance_std_cm` are
+still sent and still used as-is for any reading without `samples_cm` (all
+backlog entries, and the current reading whenever `DEBUG_SEND_RAW_SAMPLES`
+is off). Raw samples are also persisted (not just logged) so they can be
+browsed per-reading from the admin page.
 
-**Rain can beat the "majority of samples are good" assumption.** Median+MAD
-rejection (like the device's own median+3sigma) assumes the true-surface
-pings are the majority of the batch. Observed in the field: rain splashing
-against the tank surface can produce enough scattered near-sensor echoes
-that they outnumber the true-surface pings within a single wake's batch,
-even though the true-surface pings are still tightly clustered among
-themselves. Median+MAD then converges on the scattered side instead, but
-gives itself away by reporting a `distance_std_cm` in the tens of cm (the
-spread of a scatter, not a real cluster) rather than the usual sub-mm-to-a-
-few-mm figure. Rather than a cleverer clustering heuristic (any small "seed
-cluster" approach risks landing on a coincidental close pair from the
-scattered side instead of the real one), the server treats a post-filter
-`distance_std_cm` above 1cm as untrustworthy and discards that reading's
-`distance_cm`/`distance_std_cm` entirely (stored as the same sentinel as a
-real no-echo ping) rather than risk storing/charting a badly wrong value.
-The raw `samples_cm` are still persisted and browsable either way, so
-nothing about the event is actually lost.
+**Rain can beat the "majority of samples are good" assumption.** Any
+median-anchored filter (including the device's own median+3sigma) assumes
+the true-surface pings are the majority of the batch. Observed in the
+field: rain splashing against the tank surface can produce enough scattered
+near-sensor echoes that they outnumber the true-surface pings within a
+single wake's batch, even though the true-surface pings are still tightly
+clustered among themselves — sometimes as little as a quarter of the batch.
+A median-anchored filter converges on the scattered majority instead and
+has no way to recover, by construction.
+
+The server's filter (`sample_filter.py`) instead works by density, not
+majority: sort the batch, split it into runs wherever consecutive samples
+are more than 2cm apart, discard any run smaller than 25% of the batch (a
+small run can look deceptively tight purely because a small sample's std
+dev is a noisy estimate — even a single lone point has "zero" spread), and
+take whichever remaining run has the lowest std dev. An earlier design
+seeded from the single closest pair of points and grew outward from there,
+but real batches can have an exact-duplicate pair sitting inside the wrong
+(scattered) group, which a seed-based approach latches onto immediately
+with no way to recover — the run-based approach doesn't have that failure
+mode since the split is a single global rule over the whole sorted batch,
+not a local pick. Even the winning run still gets discarded (stored as the
+same sentinel as a real no-echo ping) if its std dev exceeds 1.5cm — a
+last-resort check for batches with no trustworthy cluster at all. The raw
+`samples_cm` are persisted and browsable either way, so nothing about a
+rejected reading is actually lost, only its derived distance/level.
 
 | Field | Type | Notes |
 |---|---|---|
