@@ -14,7 +14,7 @@ import db
 import projection
 import sample_filter
 from auth import require_admin, require_device_token
-from schemas import SENTINEL_CHIP_TEMP_FAIL, SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest
+from schemas import SENTINEL_CHIP_TEMP_FAIL, SENTINEL_NO_ECHO, AdminConfigIn, AlertConfigIn, DeviceRequest, EraseFieldsIn
 
 DEFAULT_RANGE_DAYS = 7
 SUMMARY_LOOKBACK_DAYS = max(projection.TANK_PROJECTION_WINDOW_DAYS, projection.BATTERY_PROJECTION_WINDOW_DAYS)
@@ -57,6 +57,11 @@ def admin(request: Request):
 @app.get("/watertank/admin/settings", response_class=HTMLResponse, dependencies=[Depends(require_admin)])
 def admin_settings(request: Request):
     return templates.TemplateResponse(request, "admin_settings.html")
+
+
+@app.get("/watertank/admin/data-editor", response_class=HTMLResponse, dependencies=[Depends(require_admin)])
+def admin_data_editor(request: Request):
+    return templates.TemplateResponse(request, "admin_data_editor.html")
 
 
 @app.post("/watertank/api/readings/{token}", dependencies=[Depends(require_device_token)])
@@ -260,6 +265,49 @@ def put_admin_config(body: AdminConfigIn):
         "desired": {"wakeup_period_min": body.wakeup_period_min, "avg_sample_count": body.avg_sample_count},
         "calibration": {"reference_offset_cm": body.reference_offset_cm, "chip_temp_offset_c": body.chip_temp_offset_c},
     }
+
+
+@app.get("/watertank/api/admin/edit-readings", dependencies=[Depends(require_admin)])
+def get_admin_edit_readings(start: str | None = None, end: str | None = None):
+    with db.get_connection() as conn:
+        data_start, data_end = db.get_data_bounds(conn)
+        if data_start is None or data_end is None:
+            return {"start": None, "end": None, "data_start": None, "data_end": None, "readings": []}
+
+        resolved_end = _parse_iso(end) if end else data_end
+        resolved_start = (
+            _parse_iso(start) if start else max(data_start, resolved_end - timedelta(days=DEFAULT_RANGE_DAYS))
+        )
+
+        rows = db.get_readings_for_edit(conn, resolved_start.isoformat(), resolved_end.isoformat())
+
+    readings = [
+        {
+            "id": id_,
+            "time": reading_time_str,
+            "distance_cm": distance_cm,
+            "distance_std_cm": distance_std_cm,
+            "chip_temp_c": chip_temp_c,
+            "battery_mv": battery_mv,
+            "rssi": rssi,
+        }
+        for id_, reading_time_str, distance_cm, distance_std_cm, chip_temp_c, battery_mv, rssi in rows
+    ]
+
+    return {
+        "start": resolved_start.isoformat(),
+        "end": resolved_end.isoformat(),
+        "data_start": data_start.isoformat(),
+        "data_end": data_end.isoformat(),
+        "readings": readings,
+    }
+
+
+@app.post("/watertank/api/admin/erase-fields", dependencies=[Depends(require_admin)])
+def post_admin_erase_fields(body: EraseFieldsIn):
+    with db.get_connection() as conn:
+        updated = db.erase_reading_fields(conn, body.ids, body.fields)
+    return {"updated": updated}
 
 
 @app.get("/watertank/api/admin/raw-samples", dependencies=[Depends(require_admin)])

@@ -1,4 +1,5 @@
 import re
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -90,3 +91,14 @@ class AlertConfigIn(BaseModel):
         if not EMAIL_PATTERN.match(v):
             raise ValueError(f"recipient_email {v!r} doesn't look like a valid email address")
         return v
+
+
+class EraseFieldsIn(BaseModel):
+    """Admin data-editor request: null out specific field(s) on specific readings.
+
+    Only fields that are independently nullable per-reading are offered --
+    see db.ERASABLE_FIELD_COLUMNS for why battery_mv/rssi aren't included.
+    """
+
+    ids: list[int] = Field(min_length=1, max_length=1000)
+    fields: list[Literal["water_level", "temperature"]] = Field(min_length=1)

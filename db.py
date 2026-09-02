@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from collections.abc import Sequence
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -171,6 +172,48 @@ def get_raw_samples_for_reading(conn, reading_id: int):
         "FROM readings WHERE id = ? AND raw_samples_json IS NOT NULL",
         (reading_id,),
     ).fetchone()
+
+
+def get_readings_for_edit(conn, start_iso: str, end_iso: str):
+    # Same shape as get_readings but keeps the row id, since the editor
+    # targets individual readings for field-level erasure.
+    return conn.execute(
+        """
+        SELECT r.id, r.reading_time, r.distance_cm, r.distance_std_cm, r.chip_temp_c, r.battery_mv,
+               CASE WHEN r.seq = (SELECT MAX(seq) FROM readings WHERE request_id = r.request_id)
+                    THEN q.rssi ELSE NULL END AS rssi
+        FROM readings r
+        JOIN requests q ON q.id = r.request_id
+        WHERE r.reading_time BETWEEN ? AND ?
+        ORDER BY r.reading_time
+        """,
+        (start_iso, end_iso),
+    ).fetchall()
+
+
+# Fields the admin data-editor is allowed to null out per reading, mapped to
+# the columns each one covers. distance_std_cm rides along with water_level
+# since it's just the noise estimate of that same (bad) distance measurement
+# -- keeping it around after distance_cm is erased would be meaningless.
+# battery_mv/rssi are NOT NULL (rssi also lives on the shared requests row,
+# not per-reading) so they're intentionally not erasable here.
+ERASABLE_FIELD_COLUMNS = {
+    "water_level": ("distance_cm", "distance_std_cm"),
+    "temperature": ("chip_temp_c",),
+}
+
+
+def erase_reading_fields(conn, ids: list[int], fields: Sequence[str]) -> int:
+    columns = [col for field in fields for col in ERASABLE_FIELD_COLUMNS[field]]
+    if not columns or not ids:
+        return 0
+    set_clause = ", ".join(f"{col} = NULL" for col in columns)
+    id_placeholders = ", ".join("?" for _ in ids)
+    cur = conn.execute(
+        f"UPDATE readings SET {set_clause} WHERE id IN ({id_placeholders})",
+        ids,
+    )
+    return cur.rowcount
 
 
 def get_desired_config(conn) -> tuple[int | None, int | None]:

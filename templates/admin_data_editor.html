@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit Readings &mdash; Water Tank Level Monitor</title>
+  <link rel="icon" type="image/svg+xml" href="/watertank/static/favicon.svg" />
+  <link rel="stylesheet" href="/watertank/static/css/style.css" />
+</head>
+<body>
+  <div class="page settings-page editor-page">
+    <header class="settings-header">
+      <a class="back-link" href="/watertank/admin">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Dashboard
+      </a>
+      <div class="settings-header-title">Edit Readings</div>
+      <div class="header-spacer"></div>
+    </header>
+
+    <div class="settings-body">
+      <h2 class="settings-title">Fix bad measurements</h2>
+      <p class="settings-subtitle">
+        Select one or more readings below, choose which field(s) went wrong, and erase just those
+        &mdash; the rest of the row (e.g. temperature when only the distance sensor glitched) is left alone.
+      </p>
+
+      <section class="settings-card">
+        <div class="range-pills" id="editor-range-pills">
+          <button type="button" data-range="24h">24h</button>
+          <button type="button" data-range="7">7d</button>
+          <button type="button" data-range="30">30d</button>
+          <button type="button" data-range="60">60d</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+
+        <p class="settings-hint">
+          Click a row to select it. Shift-click or Shift+Arrow to select a range,
+          Ctrl/Cmd-click to add or remove a row. Once a row is focused, Up/Down arrows move
+          the selection.
+        </p>
+
+        <div class="table-wrap">
+          <div class="chart-card table-scroll" id="editor-table-wrap" tabindex="0">
+            <table class="readings-table editor-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Water level (cm)</th>
+                  <th>Std dev (cm)</th>
+                  <th>Temp (&deg;C)</th>
+                  <th>Battery (mV)</th>
+                  <th>RSSI (dBm)</th>
+                </tr>
+              </thead>
+              <tbody id="editor-table-body"></tbody>
+            </table>
+            <p class="settings-hint" id="editor-empty-state" style="display: none;">No readings in this range.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="settings-savebar editor-savebar">
+      <span class="config-status" id="editor-status">0 selected</span>
+      <label class="check-row">
+        <input type="checkbox" id="erase-water-level" />
+        <span class="check-mark"></span>
+        Water level
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="erase-temperature" />
+        <span class="check-mark"></span>
+        Temperature
+      </label>
+      <button class="btn-save tone-danger" type="button" id="erase-button" disabled>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+        Erase selected field(s)
+      </button>
+    </div>
+  </div>
+
+  <script src="/watertank/static/js/admin_data_editor.js"></script>
+</body>
+</html>

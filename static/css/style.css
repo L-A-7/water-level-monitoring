@@ -1010,3 +1010,59 @@ footer a:hover {
     margin-right: 0;
   }
 }
+
+/* ---- admin data editor ---- */
+
+.editor-page {
+  max-width: 760px;
+}
+
+#editor-table-wrap {
+  outline: none;
+}
+
+#editor-table-wrap:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: -1px;
+}
+
+table.editor-table tbody tr {
+  cursor: pointer;
+  user-select: none;
+}
+
+table.editor-table tbody tr:hover {
+  background: var(--series-1-wash);
+}
+
+table.editor-table tbody tr.selected {
+  background: var(--series-1-wash);
+}
+
+table.editor-table tbody tr.active-row {
+  box-shadow: inset 2px 0 0 var(--series-1);
+}
+
+.editor-savebar {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.editor-savebar .check-row {
+  padding: 8px 0;
+  flex: none;
+}
+
+.btn-save.tone-danger {
+  background: var(--series-2);
+}
+
+.btn-save.confirm-pending {
+  background: var(--text-primary);
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
