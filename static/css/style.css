@@ -1036,11 +1036,16 @@ table.editor-table tbody tr:hover {
 }
 
 table.editor-table tbody tr.selected {
-  background: var(--series-1-wash);
+  background: rgba(42, 120, 214, 0.28);
+  box-shadow: inset 3px 0 0 var(--series-1);
+}
+
+table.editor-table tbody tr.selected:hover {
+  background: rgba(42, 120, 214, 0.36);
 }
 
 table.editor-table tbody tr.active-row {
-  box-shadow: inset 2px 0 0 var(--series-1);
+  box-shadow: inset 3px 0 0 var(--series-1), inset 0 0 0 1px var(--series-1);
 }
 
 .editor-savebar {
