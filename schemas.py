@@ -94,11 +94,21 @@ class AlertConfigIn(BaseModel):
 
 
 class EraseFieldsIn(BaseModel):
-    """Admin data-editor request: null out specific field(s) on specific readings.
+    """Admin data-editor request: null out specific field(s) on specific readings,
+    or drop them entirely with "whole_reading".
 
-    Only fields that are independently nullable per-reading are offered --
-    see db.ERASABLE_FIELD_COLUMNS for why battery_mv/rssi aren't included.
+    water_level/temperature null out individual columns -- see
+    db.ERASABLE_FIELD_COLUMNS for why battery_mv/rssi aren't offered that
+    way. whole_reading deletes the row outright instead (db.delete_readings),
+    so it can't be combined with the column-level fields in the same request.
     """
 
     ids: list[int] = Field(min_length=1, max_length=1000)
-    fields: list[Literal["water_level", "temperature"]] = Field(min_length=1)
+    fields: list[Literal["water_level", "temperature", "whole_reading"]] = Field(min_length=1)
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v: list[str]) -> list[str]:
+        if "whole_reading" in v and len(v) > 1:
+            raise ValueError("whole_reading deletes the entire row -- it can't be combined with other fields")
+        return v

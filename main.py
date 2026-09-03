@@ -305,8 +305,13 @@ def get_admin_edit_readings(start: str | None = None, end: str | None = None):
 
 @app.post("/watertank/api/admin/erase-fields", dependencies=[Depends(require_admin)])
 def post_admin_erase_fields(body: EraseFieldsIn):
-    with db.get_connection() as conn:
-        updated = db.erase_reading_fields(conn, body.ids, body.fields)
+    if "whole_reading" in body.fields:
+        db.backup_before_delete()
+        with db.get_connection() as conn:
+            updated = db.delete_readings(conn, body.ids)
+    else:
+        with db.get_connection() as conn:
+            updated = db.erase_reading_fields(conn, body.ids, body.fields)
     return {"updated": updated}
 
 

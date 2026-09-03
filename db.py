@@ -2,7 +2,7 @@ import os
 import sqlite3
 from collections.abc import Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 DB_PATH = os.environ.get("WATER_TANK_DB", os.path.join(os.path.dirname(__file__), "data", "water_tank.db"))
 
@@ -196,7 +196,9 @@ def get_readings_for_edit(conn, start_iso: str, end_iso: str):
 # since it's just the noise estimate of that same (bad) distance measurement
 # -- keeping it around after distance_cm is erased would be meaningless.
 # battery_mv/rssi are NOT NULL (rssi also lives on the shared requests row,
-# not per-reading) so they're intentionally not erasable here.
+# not per-reading) so they're intentionally not erasable here. "whole_reading"
+# isn't a column-null op at all -- see delete_readings() below -- so it has
+# no entry here.
 ERASABLE_FIELD_COLUMNS = {
     "water_level": ("distance_cm", "distance_std_cm"),
     "temperature": ("chip_temp_c",),
@@ -214,6 +216,36 @@ def erase_reading_fields(conn, ids: list[int], fields: Sequence[str]) -> int:
         ids,
     )
     return cur.rowcount
+
+
+def delete_readings(conn, ids: list[int]) -> int:
+    """Drop entire reading row(s) -- the "whole reading" erase option, for a
+    point that's garbage across the board (not just one bad field). Doesn't
+    touch the parent requests row, so a shared rssi stays intact for any
+    other reading still in that request's backlog."""
+    if not ids:
+        return 0
+    id_placeholders = ", ".join("?" for _ in ids)
+    cur = conn.execute(f"DELETE FROM readings WHERE id IN ({id_placeholders})", ids)
+    return cur.rowcount
+
+
+def backup_before_delete() -> str:
+    # Same approach as remove_reading.py's backup_db() -- whole-reading
+    # deletion is irreversible, so snapshot the file first. Uses its own
+    # connections outside of get_connection()'s transaction handling since
+    # sqlite3's backup API needs to run against the live file, not a
+    # yet-to-be-committed transaction.
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_path = f"{DB_PATH}.backup-{ts}"
+    src = sqlite3.connect(DB_PATH)
+    dst = sqlite3.connect(backup_path)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
+    return backup_path
 
 
 def get_desired_config(conn) -> tuple[int | None, int | None]:

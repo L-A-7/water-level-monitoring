@@ -895,6 +895,15 @@ footer a:hover {
   color: var(--text-muted);
 }
 
+.check-row:has(input:disabled) {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.check-row input:disabled + .check-mark {
+  opacity: 0.4;
+}
+
 .check-mark-disabled {
   opacity: 0.5;
 }
@@ -1056,6 +1065,11 @@ table.editor-table tbody tr.active-row {
 .editor-savebar .check-row {
   padding: 8px 0;
   flex: none;
+}
+
+.check-row-danger input[type="checkbox"]:checked + .check-mark {
+  background: var(--series-2);
+  border-color: var(--series-2);
 }
 
 .btn-save.tone-danger {

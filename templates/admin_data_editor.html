@@ -23,6 +23,8 @@
       <p class="settings-subtitle">
         Select one or more readings below, choose which field(s) went wrong, and erase just those
         &mdash; the rest of the row (e.g. temperature when only the distance sensor glitched) is left alone.
+        Use <strong>Whole reading</strong> instead when the entire point is bad and should disappear
+        from the chart altogether.
       </p>
 
       <section class="settings-card">
@@ -72,6 +74,11 @@
         <input type="checkbox" id="erase-temperature" />
         <span class="check-mark"></span>
         Temperature
+      </label>
+      <label class="check-row check-row-danger">
+        <input type="checkbox" id="erase-whole-reading" />
+        <span class="check-mark"></span>
+        Whole reading
       </label>
       <button class="btn-save tone-danger" type="button" id="erase-button" disabled>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>

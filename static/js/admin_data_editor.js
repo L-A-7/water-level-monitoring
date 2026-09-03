@@ -56,10 +56,30 @@ async function loadRange(rangeKey) {
 }
 
 function rowSelectedFields() {
+  if (document.getElementById("erase-whole-reading").checked) return ["whole_reading"];
   const fields = [];
   if (document.getElementById("erase-water-level").checked) fields.push("water_level");
   if (document.getElementById("erase-temperature").checked) fields.push("temperature");
   return fields;
+}
+
+function eraseButtonLabel() {
+  return rowSelectedFields().includes("whole_reading") ? "Delete selected reading(s)" : "Erase selected field(s)";
+}
+
+// "Whole reading" wipes everything on the row, so it doesn't make sense to
+// combine with the column-level checkboxes -- keep them mutually exclusive.
+function onWholeReadingChange() {
+  const whole = document.getElementById("erase-whole-reading").checked;
+  const waterCb = document.getElementById("erase-water-level");
+  const tempCb = document.getElementById("erase-temperature");
+  waterCb.disabled = whole;
+  tempCb.disabled = whole;
+  if (whole) {
+    waterCb.checked = false;
+    tempCb.checked = false;
+  }
+  updateToolbar();
 }
 
 function updateToolbar() {
@@ -76,7 +96,7 @@ function resetConfirm() {
   const button = document.getElementById("erase-button");
   button.classList.remove("confirm-pending");
   if (!button.disabled) {
-    button.lastChild.textContent = "Erase selected field(s)";
+    button.lastChild.textContent = eraseButtonLabel();
   }
 }
 
@@ -184,20 +204,29 @@ async function onEraseClick() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const idSet = new Set(ids);
-    for (const r of readings) {
-      if (!idSet.has(r.id)) continue;
-      if (fields.includes("water_level")) {
-        r.distance_cm = null;
-        r.distance_std_cm = null;
+    const wholeReading = fields.includes("whole_reading");
+    if (wholeReading) {
+      readings = readings.filter((r) => !idSet.has(r.id));
+    } else {
+      for (const r of readings) {
+        if (!idSet.has(r.id)) continue;
+        if (fields.includes("water_level")) {
+          r.distance_cm = null;
+          r.distance_std_cm = null;
+        }
+        if (fields.includes("temperature")) r.chip_temp_c = null;
       }
-      if (fields.includes("temperature")) r.chip_temp_c = null;
     }
     selectedIds.clear();
-    document.getElementById("editor-status").textContent = "Erased.";
+    anchorIndex = null;
+    activeIndex = null;
     renderTable();
+    // after renderTable(), since updateToolbar() (called from within it)
+    // would otherwise immediately overwrite this with "0 selected"
+    document.getElementById("editor-status").textContent = wholeReading ? "Deleted." : "Erased.";
   } catch (err) {
-    document.getElementById("editor-status").textContent = "Failed to erase — try again.";
     updateToolbar();
+    document.getElementById("editor-status").textContent = "Failed to erase — try again.";
   }
 }
 
@@ -207,6 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("erase-water-level").addEventListener("change", updateToolbar);
   document.getElementById("erase-temperature").addEventListener("change", updateToolbar);
+  document.getElementById("erase-whole-reading").addEventListener("change", onWholeReadingChange);
   document.getElementById("erase-button").addEventListener("click", onEraseClick);
   document.getElementById("editor-table-wrap").addEventListener("keydown", onTableKeydown);
 
