@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Water Tank Level Monitor &mdash; Admin</title>
   <link rel="icon" type="image/svg+xml" href="/watertank/static/favicon.svg" />
-  <link rel="stylesheet" href="/watertank/static/css/style.css" />
+  <link rel="stylesheet" href="/watertank/static/css/style.css?v={{ static_version }}" />
 </head>
 <body>
   {% set admin = true %}
   {% include "_dashboard.html" %}
 
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="/watertank/static/js/dashboard.js"></script>
+  <script src="/watertank/static/js/dashboard.js?v={{ static_version }}"></script>
 </body>
 </html>

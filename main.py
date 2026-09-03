@@ -1,4 +1,5 @@
 import json
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -30,6 +31,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.mount("/watertank/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+# Cache-busting query string for static css/js: fixed per process, so every
+# deploy (which requires a service restart to pick up main.py/db.py changes
+# anyway) gets a fresh URL and can't serve a stale cached JS/CSS file from
+# before the deploy -- see the "checkboxes not exclusive" bug this fixed.
+templates.env.globals["static_version"] = int(time.time())
 
 
 def _parse_iso(value: str) -> datetime:
