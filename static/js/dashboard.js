@@ -11,6 +11,9 @@
 // curve. Finer for tighter ranges (needs to resolve short gaps without
 // collapsing readings together), coarser for wide ranges (keeps the point
 // count sane over weeks/months).
+//
+// bufferDays is how much history is fetched (beyond the visible `days`) so
+// the chart can be scrolled back; null fetches the whole history.
 const RANGE_PRESETS = [
   { key: "24h", label: "24h", days: 1, bufferDays: 7, gridMinutes: 1 },
   { key: "7", label: "7d", days: 7, bufferDays: 30, gridMinutes: 15 },
@@ -167,7 +170,6 @@ function setCookie(name, value) {
 }
 
 function rangeStartIso(days) {
-  if (days === null) return null;
   const d = new Date();
   d.setTime(d.getTime() - days * 24 * 60 * 60 * 1000);
   return d.toISOString();
@@ -540,10 +542,10 @@ async function loadGroupRange(key, presetKey) {
   });
   setCookie(def.rangeCookie, preset.key);
 
-  const fetchDays = preset.bufferDays !== null ? preset.bufferDays : preset.days;
+  // An explicit start even for the whole history -- without one the API
+  // falls back to its own default window (main.py's DEFAULT_RANGE_DAYS).
   const params = new URLSearchParams();
-  const start = rangeStartIso(fetchDays);
-  if (start) params.set("start", start);
+  params.set("start", preset.bufferDays !== null ? rangeStartIso(preset.bufferDays) : new Date(0).toISOString());
 
   const res = await fetch(`/watertank/api/readings?${params.toString()}`);
   const data = await res.json();
