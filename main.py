@@ -99,11 +99,15 @@ def post_readings(token: str, body: DeviceRequest):
             if reading.samples_cm:
                 raw_samples_json = json.dumps(reading.samples_cm)
                 # Raw samples present -> recompute distance_cm/distance_std_cm
-                # server-side (MAD-based filter, see sample_filter.py) instead
-                # of trusting the device's own on-device-filtered values.
+                # server-side (see sample_filter.py) instead of trusting the
+                # device's own on-device-filtered values.
                 filtered_distance_cm, filtered_distance_std_cm = sample_filter.filter_samples(reading.samples_cm)
                 distance_cm = None if filtered_distance_cm == SENTINEL_NO_ECHO else filtered_distance_cm
                 distance_std_cm = None if filtered_distance_std_cm == SENTINEL_NO_ECHO else filtered_distance_std_cm
+            elif distance_std_cm is not None and distance_std_cm > sample_filter.REJECT_STD_THRESHOLD_CM:
+                # No raw samples (backlog entry) -> the device's own value,
+                # but held to the same spread limit as a server-filtered one.
+                distance_cm = distance_std_cm = None
 
             db.insert_reading(
                 conn,

@@ -80,26 +80,30 @@ the true-surface pings are the majority of the batch. Observed in the
 field: rain splashing against the tank surface can produce enough scattered
 near-sensor echoes that they outnumber the true-surface pings within a
 single wake's batch, even though the true-surface pings are still tightly
-clustered among themselves — sometimes as little as a quarter of the batch.
+clustered among themselves — sometimes as little as a fifth of the batch.
 A median-anchored filter converges on the scattered majority instead and
 has no way to recover, by construction.
 
-The server's filter (`sample_filter.py`) instead works by density, not
+The server's filter (`sample_filter.py`) instead works by position, not
 majority: sort the batch, split it into runs wherever consecutive samples
-are more than 2cm apart, discard any run smaller than 25% of the batch (a
-small run can look deceptively tight purely because a small sample's std
-dev is a noisy estimate — even a single lone point has "zero" spread), and
-take whichever remaining run has the lowest std dev. An earlier design
-seeded from the single closest pair of points and grew outward from there,
-but real batches can have an exact-duplicate pair sitting inside the wrong
-(scattered) group, which a seed-based approach latches onto immediately
-with no way to recover — the run-based approach doesn't have that failure
-mode since the split is a single global rule over the whole sorted batch,
-not a local pick. Even the winning run still gets discarded (stored as the
-same sentinel as a real no-echo ping) if its std dev exceeds 1.5cm — a
-last-resort check for batches with no trustworthy cluster at all. The raw
-`samples_cm` are persisted and browsable either way, so nothing about a
-rejected reading is actually lost, only its derived distance/level.
+are more than 2cm apart, keep runs of at least 4 points (fewer can look
+deceptively tight purely by chance) with a std dev of at most 1.5cm, and
+take the **farthest** of those. Real data shows recurring "ghost" clusters
+at fixed distances (~57-59, 62, 71, 84, 96, 108cm — inflow/splash during
+rain, and something fixed in the tank at ~108cm even in calm weather) that
+can be tighter than, and outnumber, the true-surface cluster; but they are
+all *above* the water, so the surface is the farthest tight cluster whenever
+it's present. If more than 3 pings lie beyond the chosen run, the true
+surface is evidently missing from that batch and the reading is rejected
+(stored as the same sentinel as a real no-echo ping). Earlier designs —
+"tightest run of at least 25% of the batch", and before that a seed grown
+from the closest pair of points — both latched onto ghost clusters. A batch
+where *only* a ghost answers (no surface echo at all) still passes; nothing
+within a single batch can tell it apart. Readings without `samples_cm`
+(backlog entries) keep the device's own value, but are rejected the same way
+if their `distance_std_cm` exceeds 1.5cm. The raw `samples_cm` are persisted
+and browsable either way, so nothing about a rejected reading is actually
+lost, only its derived distance/level.
 
 | Field | Type | Notes |
 |---|---|---|
